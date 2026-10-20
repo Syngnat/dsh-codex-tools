@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
-import { createBrowserTool } from "../lib/browser-tool.mjs";
+import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
 import { apply } from "../index.js";
 
 /** A context that records registrations and serves no services. */
@@ -65,11 +65,12 @@ test("defineTool produces a registry-ready definition", () => {
   assert.deepEqual(definition.output.render({}, "x"), [{ type: "text", text: "x" }]);
 });
 
-test("apply registers exactly the four tools", () => {
+test("apply registers exactly the five tools", () => {
   const ctx = fakeContext();
   apply(ctx, {});
   assert.deepEqual([...ctx.registered.keys()].sort(), [
     "browser",
+    "browser_use",
     "codex_tools_update",
     "computer_use",
     "session_message",
@@ -78,7 +79,7 @@ test("apply registers exactly the four tools", () => {
 
 test("apply honours the per-tool disable switches", () => {
   const ctx = fakeContext();
-  apply(ctx, { computerUse: false, browser: false, update: false });
+  apply(ctx, { computerUse: false, browser: false, browserUse: false, update: false });
   assert.deepEqual([...ctx.registered.keys()], ["session_message"]);
 });
 
@@ -367,4 +368,21 @@ test("browser dismisses the Sky cursor after every action", async () => {
   const tool = createBrowserTool({ client, defineTool });
   await tool.execute({ action: "list_browsers" }, {});
   assert.deepEqual(client.turnEndedCalls, ["Stop"]);
+});
+
+test("browser_use defaults open_tab and list_tabs to the in-app browser", async () => {
+  const client = recordingClient();
+  const tool = createBrowserUseTool({ client, defineTool });
+  assert.equal(tool.name, "browser_use");
+  await tool.execute({ action: "open_tab", url: "http://127.0.0.1:3000" }, {});
+  assert.match(client.scripts[0], /createBrowserTab\("iab"/);
+  await tool.execute({ action: "list_tabs" }, {});
+  assert.match(client.scripts[1], /listTabs\(\{"browser":"iab"\}\)/);
+});
+
+test("browser without a default still omits browser id", async () => {
+  const client = recordingClient();
+  const tool = createBrowserTool({ client, defineTool });
+  await tool.execute({ action: "open_tab", url: "https://example.com" }, {});
+  assert.match(client.scripts[0], /createBrowserTab\(undefined,/);
 });

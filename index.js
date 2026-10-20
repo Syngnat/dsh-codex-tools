@@ -27,7 +27,7 @@ import { fileURLToPath } from "node:url";
 import { CuaReplClient } from "./lib/cua-repl-client.mjs";
 import { defineTool } from "./lib/define-tool.mjs";
 import { createComputerTool } from "./lib/computer-tool.mjs";
-import { createBrowserTool } from "./lib/browser-tool.mjs";
+import { createBrowserTool, createBrowserUseTool } from "./lib/browser-tool.mjs";
 import { createSessionTool } from "./lib/session-tool.mjs";
 import { createUpdateTool } from "./lib/update-tool.mjs";
 import { UpdateService } from "./lib/update-service.mjs";
@@ -86,6 +86,9 @@ export function apply(ctx, config = {}) {
   }
   if (settings.browser !== false) {
     definitions.push(createBrowserTool({ client, defineTool: define }));
+  }
+  if (settings.browserUse !== false) {
+    definitions.push(createBrowserUseTool({ client, defineTool: define }));
   }
   if (settings.sessionMessaging !== false) {
     definitions.push(createSessionTool({ defineTool: define, getService }));

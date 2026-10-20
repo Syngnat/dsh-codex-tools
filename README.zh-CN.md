@@ -9,7 +9,8 @@
 | 工具 | 做什么 | 来源 |
 | --- | --- | --- |
 | `computer_use` | 通过无障碍树和截图读写 macOS 原生 App | Codex 的 Computer Use 运行时 |
-| `browser` | 列出浏览器与标签页、绑定一个、读取、点击、输入、导航 | Codex 的 browser-desktop provider |
+| `browser` | 列出浏览器与标签页、绑定一个、读取、点击、输入、导航 | Codex 的 Chrome 自动化（ChatGPT 扩展） |
+| `browser_use` | 同样的动作，默认走 Codex 应用内浏览器（`iab`） | Codex 的 Browser / browser-use（IAB） |
 | `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Harness 原生服务 |
 | `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host `pluginManager` |
 
@@ -51,6 +52,7 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 | `computerUse` | `true` | 是否注册 `computer_use` 工具。 |
 | `browser` | `true` | 是否注册 `browser` 工具。 |
 | `sessionMessaging` | `true` | 是否注册 `session_message` 工具。 |
+| `browserUse` | `true` | 是否注册 `browser_use` 工具（应用内浏览器）。 |
 | `update` | `true` | 是否注册 `codex_tools_update` 工具。 |
 | `callTimeoutMs` | `120000` | 单次 REPL 求值的超时。 |
 | `codexSessionId` | 自动生成 | Codex turn metadata 里上报的固定 `session_id`。 |
@@ -104,7 +106,17 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 浏览器来自 Codex 的 Chrome 扩展、内置浏览器，或运行时对外公布的其他 provider。
 `list_browsers` 看有哪些连着，`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
 
+## `browser_use`
+
+动作与 `browser` 相同，但默认浏览器 id 是 `iab` —— 也就是 Codex 自己叫 Browser / browser-use 的那条面。它在 ChatGPT.app 里面（应用必须在跑）。**不会**挂到你的 Chrome 上，所以 Chrome 不会出现「ChatGPT 正在调试」那条黄条。
+
+```
+browser_use { action: "list_browsers" }
+browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
+```
+
 ## `session_message`
+
 
 动作：`list_workspaces`、`list_sessions`、`dispatch`、`create`、`send`、
 `fork`、`rename`。

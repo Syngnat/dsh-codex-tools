@@ -4,6 +4,16 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-20
+
+### Added
+
+- `browser_use`: Codex's in-app browser (IAB), the surface Codex calls Browser /
+  browser-use. Same actions as `browser`, but defaults to browser id `iab` so
+  Chrome is not attached and the ChatGPT debugging infobar does not appear.
+
+[1.0.2]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.2
+
 ## [1.0.1] - 2026-10-20
 
 ### Added
@@ -57,5 +67,6 @@ First release.
 - `computer_use` does not activate windows or move the pointer, and draws no
   overlay.
 
+[1.0.2]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.0

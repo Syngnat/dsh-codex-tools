@@ -9,7 +9,8 @@ A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepse
 | Tool | What it does | Where it comes from |
 | --- | --- | --- |
 | `computer_use` | Reads and drives native macOS apps through their accessibility tree and screenshots | Codex's Computer Use runtime |
-| `browser` | Lists browsers and tabs, binds one, reads it, clicks, types, navigates | Codex's browser-desktop provider |
+| `browser` | Lists browsers and tabs, binds one, reads it, clicks, types, navigates | Codex Chrome automation (ChatGPT extension) |
+| `browser_use` | Same actions, defaulting to Codex's in-app browser (`iab`) | Codex Browser / browser-use (IAB) |
 | `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Harness-native services |
 | `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` |
 
@@ -51,6 +52,7 @@ The plugin registers itself through `cordis.patch.yml`:
 | `computerUse` | `true` | Register the `computer_use` tool. |
 | `browser` | `true` | Register the `browser` tool. |
 | `sessionMessaging` | `true` | Register the `session_message` tool. |
+| `browserUse` | `true` | Register the `browser_use` tool (in-app browser).
 | `update` | `true` | Register the `codex_tools_update` tool. |
 | `callTimeoutMs` | `120000` | Per-call deadline for one REPL evaluation. |
 | `codexSessionId` | generated | Stable `session_id` reported in the Codex turn metadata. |
@@ -116,7 +118,20 @@ provider the runtime advertises. `list_browsers` shows what is connected;
 `list_tabs` shows tabs; `open_tab` or `get_tab` binds one and keeps it bound for
 later calls.
 
+## `browser_use`
+
+Same actions as `browser`, but the default browser id is `iab` — Codex's
+in-app browser, the surface Codex itself calls Browser / browser-use. It lives
+inside ChatGPT.app (which must be running). It does **not** attach to your
+Chrome, so Chrome will not show a ChatGPT debugging infobar.
+
+```
+browser_use { action: "list_browsers" }
+browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
+```
+
 ## `session_message`
+
 
 Actions: `list_workspaces`, `list_sessions`, `dispatch`, `create`, `send`,
 `fork`, `rename`.
