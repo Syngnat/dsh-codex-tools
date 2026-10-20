@@ -8,7 +8,7 @@ A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepse
 
 | Tool | What it does | Where it comes from |
 | --- | --- | --- |
-| `computer_use` | Reads and drives native macOS apps through their accessibility tree and screenshots | Codex's Computer Use runtime |
+| `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | macOS Accessibility, or Windows UI Automation |
 | `browser` | Lists browsers and tabs, binds one, reads it, clicks, types, navigates | Codex Chrome automation (ChatGPT extension) |
 | `browser_use` | Same actions, defaulting to Codex's in-app browser (`iab`) | Codex Browser / browser-use (IAB) |
 | `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Harness-native services |
@@ -16,7 +16,7 @@ A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepse
 
 ## Requirements
 
-- **macOS**, with `ChatGPT.app` installed — the Codex Computer Use runtime lives inside it.
+- **macOS or Windows.** `computer_use` on macOS needs Accessibility permission for `bin/dsh-ax`. On Windows the plugin builds `bin/dsh-uia.exe` from its own source the first time it runs, using the C# compiler that comes with Windows. You do not install or choose a PowerShell version.
 - **DSH `>= 0.2.1-rc.1`**, with no future-version ceiling. The plugin checks the Host capabilities it needs before mounting and names any missing one instead of guessing from a version number.
 - **Accessibility and Screen Recording permission** for the app running the Harness, for `computer_use`.
 - **The Codex Chrome extension**, for `browser` against Chrome.

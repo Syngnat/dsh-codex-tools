@@ -9,6 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
+import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
 import { apply } from "../index.js";
@@ -250,49 +251,39 @@ test("session_message resolves a workspace by id, path or title", async () => {
   );
 });
 
-/** A client that records the generated script instead of running it. */
-function recordingClient() {
-  const scripts = [];
-  const turnEndedCalls = [];
+/** Records backend calls instead of driving Accessibility or Chrome. */
+function recordingBackend() {
+  const calls = [];
   return {
-    scripts,
-    turnEndedCalls,
-    runJs: async (code) => {
-      scripts.push(code);
-      return { content: [{ type: "text", text: "ok" }] };
-    },
-    turnEnded: async (event) => {
-      turnEndedCalls.push(event);
-      return { content: [{ type: "text", text: "{}" }] };
+    calls,
+    async call(action, args) {
+      calls.push({ action, args });
+      return { text: "ok", boundId: args.tab_id ?? args.boundId ?? (action === "open_tab" ? "tab-new" : undefined) };
     },
   };
 }
 
 test("computer_use passes element indices as numbers, not strings", async () => {
-  const client = recordingClient();
-  const tool = createComputerTool({ client, defineTool });
+  const ax = recordingBackend();
+  const tool = createComputerTool({ ax, defineTool });
   await tool.execute({ action: "click", app: "Finder", element_index: "250" }, {});
-  assert.match(client.scripts[0], /app\.click\(250,/);
-  assert.doesNotMatch(client.scripts[0], /app\.click\("250"/);
-
+  assert.equal(ax.calls[0].args.element_index, 250);
   await tool.execute({ action: "set_value", app: "Finder", element_index: "12", value: "x" }, {});
-  assert.match(client.scripts[1], /app\.setValue\(12,/);
-
+  assert.equal(ax.calls[2].args.element_index, 12);
   await tool.execute({ action: "select_text", app: "Finder", element_index: "7", text: "hi" }, {});
-  assert.match(client.scripts[2], /app\.selectText\(7,/);
-
+  assert.equal(ax.calls[4].args.element_index, 7);
   await tool.execute({ action: "perform_secondary_action", app: "Finder", element_index: "3", action_name: "Raise" }, {});
-  assert.match(client.scripts[3], /app\.performSecondaryAction\(3,/);
-
+  assert.equal(ax.calls[6].args.element_index, 3);
   await tool.execute({ action: "scroll", app: "Finder", element_index: "9", direction: "down" }, {});
-  assert.match(client.scripts[4], /app\.scroll\(9,/);
+  assert.equal(ax.calls[8].args.element_index, 9);
 });
 
 test("computer_use still accepts a pixel target and rejects a missing one", async () => {
-  const client = recordingClient();
-  const tool = createComputerTool({ client, defineTool });
+  const ax = recordingBackend();
+  const tool = createComputerTool({ ax, defineTool });
   await tool.execute({ action: "click", app: "Finder", x: 10, y: 20 }, {});
-  assert.match(client.scripts[0], /app\.click\(\[10, 20\],/);
+  assert.equal(ax.calls[0].args.x, 10);
+  assert.equal(ax.calls[0].args.y, 20);
   await assert.rejects(
     () => tool.execute({ action: "click", app: "Finder" }, {}),
     /needs either `element_index` or both `x` and `y`/,
@@ -300,89 +291,101 @@ test("computer_use still accepts a pixel target and rejects a missing one", asyn
 });
 
 test("computer_use does not append a second state read for get_state", async () => {
-  const client = recordingClient();
-  const tool = createComputerTool({ client, defineTool });
+  const ax = recordingBackend();
+  const tool = createComputerTool({ ax, defineTool });
   await tool.execute({ action: "get_state", app: "Finder" }, {});
-  assert.equal((client.scripts[0].match(/getAXState\(/g) ?? []).length, 1);
+  assert.deepEqual(ax.calls.map((call) => call.action), ["get_state"]);
 
   await tool.execute({ action: "click", app: "Finder", element_index: "1" }, {});
-  assert.equal((client.scripts[1].match(/getAXState\(/g) ?? []).length, 1);
+  assert.deepEqual(ax.calls.slice(1).map((call) => call.action), ["click", "get_state"]);
 
   await tool.execute({ action: "click", app: "Finder", element_index: "1", return_state: false }, {});
-  assert.equal((client.scripts[2].match(/getAXState\(/g) ?? []).length, 0);
+  assert.deepEqual(ax.calls.slice(3).map((call) => call.action), ["click"]);
 });
 
 test("browser passes element indices as numbers and null for the focused element", async () => {
-  const client = recordingClient();
-  const tool = createBrowserTool({ client, defineTool });
-  await tool.execute({ action: "click", browser: "chrome", tab_id: "t1", element_index: "42" }, {});
-  assert.match(client.scripts[0], /tab\.click\(42,/);
-
-  await tool.execute({ action: "type_text", browser: "chrome", tab_id: "t1", text: "hi" }, {});
-  assert.match(client.scripts[1], /tab\.typeText\(null,/);
-
-  await tool.execute({ action: "type_text", browser: "chrome", tab_id: "t1", element_index: "5", text: "hi" }, {});
-  assert.match(client.scripts[2], /tab\.typeText\(5,/);
-
-  await tool.execute({ action: "set_value", browser: "chrome", tab_id: "t1", element_index: "8", value: "v" }, {});
-  assert.match(client.scripts[3], /tab\.setValue\(8,/);
+  const driver = recordingBackend();
+  const tool = createBrowserTool({ driver, defineTool });
+  await tool.execute({ action: "click", tab_id: "t1", element_index: "42" }, {});
+  assert.equal(driver.calls[0].args.element_index, 42);
+  await tool.execute({ action: "type_text", tab_id: "t1", text: "hi" }, {});
+  assert.equal(driver.calls[2].args.element_index, undefined);
+  await tool.execute({ action: "type_text", tab_id: "t1", element_index: "5", text: "hi" }, {});
+  assert.equal(driver.calls[4].args.element_index, 5);
+  await tool.execute({ action: "set_value", tab_id: "t1", element_index: "8", value: "v" }, {});
+  assert.equal(driver.calls[6].args.element_index, 8);
 });
 
 test("browser reuses a bound tab and rebinds when the target changes", async () => {
-  const client = recordingClient();
-  const tool = createBrowserTool({ client, defineTool });
-  await tool.execute({ action: "state", browser: "chrome", tab_id: "t1" }, {});
-  assert.match(client.scripts[0], /cua\.getTab\("t1"/);
-  await tool.execute({ action: "state", browser: "chrome", tab_id: "t1" }, {});
-  assert.match(client.scripts[1], /cua\.getTab\("t1"/);
-  await tool.execute({ action: "state", browser: "chrome", url: "https://example.test/" }, {});
-  assert.match(client.scripts[2], /cua\.getTab\(\{ url: "https:\/\/example\.test\/" \}/);
-  await assert.rejects(
-    () => tool.execute({ action: "state", browser: "chrome" }, {}),
-    /needs `tab_id` or `url`/,
-  );
+  const driver = recordingBackend();
+  const tool = createBrowserTool({ driver, defineTool });
+  await tool.execute({ action: "state", tab_id: "t1" }, {});
+  assert.equal(driver.calls[0].args.tab_id, "t1");
+  await tool.execute({ action: "state", tab_id: "t1" }, {});
+  assert.equal(driver.calls[1].args.tab_id, "t1");
+  await tool.execute({ action: "state", url: "https://example.test/" }, {});
+  assert.equal(driver.calls[2].args.url, "https://example.test/");
+  const fresh = createBrowserTool({ driver: recordingBackend(), defineTool });
+  await assert.rejects(() => fresh.execute({ action: "state" }, {}), /needs `tab_id` or `url`/);
 });
 
-test("generated scripts are wrapped so repeated calls cannot redeclare bindings", async () => {
-  const client = recordingClient();
-  const computer = createComputerTool({ client, defineTool });
-  const browser = createBrowserTool({ client, defineTool });
+test("list actions reach the local backends and never a Codex runtime", async () => {
+  const ax = recordingBackend();
+  const driver = recordingBackend();
+  const computer = createComputerTool({ ax, defineTool });
+  const browser = createBrowserTool({ driver, defineTool });
   await computer.execute({ action: "list_apps" }, {});
   await browser.execute({ action: "list_browsers" }, {});
-  for (const script of client.scripts) {
-    assert.match(script, /^await \(async \(\) => \{/);
-    assert.match(script, /\}\)\(\);$/);
-  }
+  assert.deepEqual(ax.calls.map((call) => call.action), ["list_apps"]);
+  assert.deepEqual(driver.calls.map((call) => call.action), ["list_browsers"]);
 });
 
-test("computer_use dismisses the Sky cursor after every action", async () => {
-  const client = recordingClient();
-  const tool = createComputerTool({ client, defineTool });
-  await tool.execute({ action: "list_apps" }, {});
-  await tool.execute({ action: "click", app: "Finder", element_index: "1" }, {});
-  assert.deepEqual(client.turnEndedCalls, ["Stop", "Stop"]);
-});
-
-test("browser dismisses the Sky cursor after every action", async () => {
-  const client = recordingClient();
-  const tool = createBrowserTool({ client, defineTool });
-  await tool.execute({ action: "list_browsers" }, {});
-  assert.deepEqual(client.turnEndedCalls, ["Stop"]);
-});
-
-test("browser_use defaults open_tab and list_tabs to the in-app browser", async () => {
-  const client = recordingClient();
-  const tool = createBrowserUseTool({ client, defineTool });
+test("browser_use opens a tab through its own driver", async () => {
+  const driver = recordingBackend();
+  const tool = createBrowserUseTool({ driver, defineTool });
   assert.equal(tool.name, "browser_use");
   await tool.execute({ action: "open_tab", url: "http://127.0.0.1:3000" }, {});
-  assert.match(client.scripts[0], /createBrowserTab\("iab"/);
+  assert.equal(driver.calls[0].action, "open_tab");
+  assert.equal(driver.calls[0].args.url, "http://127.0.0.1:3000");
   await tool.execute({ action: "list_tabs" }, {});
-  assert.match(client.scripts[1], /listTabs\(\{"browser":"iab"\}\)/);
+  assert.equal(driver.calls[1].action, "list_tabs");
 });
 
-test("browser without a default still omits browser id", async () => {
-  const client = recordingClient();
-  const tool = createBrowserTool({ client, defineTool });
+test("browser open_tab does not require a Codex browser id", async () => {
+  const driver = recordingBackend();
+  const tool = createBrowserTool({ driver, defineTool });
   await tool.execute({ action: "open_tab", url: "https://example.com" }, {});
-  assert.match(client.scripts[0], /createBrowserTab\(undefined,/);
+  assert.equal(driver.calls[0].action, "open_tab");
+  assert.equal(driver.calls[0].args.url, "https://example.com");
+  assert.equal(driver.calls[0].args.browser, undefined);
 });
+
+test("computer helper launches its own Windows program, not PowerShell", () => {
+  const launch = computerHelperLaunch("win32");
+  assert.match(launch.command, /dsh-uia\.exe$/);
+  assert.deepEqual(launch.args, []);
+  assert.equal(launch.label, "dsh-uia");
+  assert.equal(JSON.stringify(launch).toLowerCase().includes("powershell"), false);
+});
+
+test("windows helper is compiled with the built-in C# compiler", () => {
+  const exists = (path) => path.replaceAll("\\", "/").includes("Framework64") && (path.endsWith("csc.exe") || path.endsWith(".dll"));
+  const plan = windowsCompileCommand({ systemRoot: "C:\\Windows", pluginRoot: "D:\\plugin", exists });
+  assert.match(plan.command, /csc\.exe$/);
+  assert.match(plan.output, /dsh-uia\.exe$/);
+  assert.match(plan.source, /dsh-uia\.cs$/);
+  assert.equal(plan.args.includes(plan.source), true);
+  assert.equal(JSON.stringify(plan).toLowerCase().includes("powershell"), false);
+});
+
+test("computer helper selects the macOS accessibility binary on darwin", () => {
+  const launch = computerHelperLaunch("darwin");
+  assert.match(launch.command, /dsh-ax$/);
+  assert.deepEqual(launch.args, []);
+  assert.equal(launch.label, "dsh-ax");
+});
+
+test("computer helper rejects systems other than macOS and Windows", () => {
+  assert.throws(() => computerHelperLaunch("linux"), /does not support linux/);
+});
+

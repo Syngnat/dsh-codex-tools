@@ -8,7 +8,7 @@
 
 | 工具 | 做什么 | 来源 |
 | --- | --- | --- |
-| `computer_use` | 通过无障碍树和截图读写 macOS 原生 App | Codex 的 Computer Use 运行时 |
+| `computer_use` | 通过无障碍树和截图读写原生 App | macOS 辅助功能，或 Windows UI Automation |
 | `browser` | 列出浏览器与标签页、绑定一个、读取、点击、输入、导航 | Codex 的 Chrome 自动化（ChatGPT 扩展） |
 | `browser_use` | 同样的动作，默认走 Codex 应用内浏览器（`iab`） | Codex 的 Browser / browser-use（IAB） |
 | `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Harness 原生服务 |
@@ -16,7 +16,7 @@
 
 ## 环境要求
 
-- **macOS**，且已安装 `ChatGPT.app` —— Codex 的 Computer Use 运行时就在它里面。
+- **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限。Windows 上插件第一次运行时用系统自带的 C# 编译器，把自己的源码编成 `bin/dsh-uia.exe`。不用安装，也不用指定 PowerShell 版本。
 - **DSH `>= 0.2.1-rc.1`**，不设未来版本上限。插件在挂载前检查所需的 Host 能力，缺哪个就报哪个名字，不靠版本号猜。
 - **辅助功能与屏幕录制权限**（授予运行 Harness 的那个 App），`computer_use` 需要。
 - **Codex 的 Chrome 扩展**，`browser` 操作 Chrome 时需要。

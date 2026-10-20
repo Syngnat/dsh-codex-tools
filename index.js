@@ -1,31 +1,22 @@
 /**
- * Codex tools for the Harness: computer use, browser control, cross-session
- * messaging, and online update of the plugin itself.
+ * Computer use, an owned Chrome window, cross-session messaging, and online
+ * update. Computer use is `bin/dsh-ax` on macOS and `bin/dsh-uia.exe` on Windows. The browsers
+ * are Chrome windows this plugin launches over the DevTools Protocol, each
+ * with its own profile. Neither path starts Codex or ChatGPT.
  *
- * The first two capabilities ride on the Codex Computer Use runtime that ships
- * inside ChatGPT.app: `@oai/cua-repl` launches the bundled `node_repl` kernel
- * with the `cua` API bound to the trusted Sky (native app) and browser-desktop
- * providers, and speaks MCP over stdio. This plugin owns one such child process
- * and translates tool calls into JavaScript for its persistent REPL, which is
- * exactly how Codex itself drives the machine.
- *
- * The third capability is native to the Harness: it uses the Host's own
- * `sessionController` and `workspaceRegistry` services, so sessions created here
- * are ordinary sessions that appear in the sidebar.
- *
- * The fourth replaces this bundle with a pinned commit of its own repository,
- * through the Host's `pluginManager`.
+ * Cross-session messaging uses the Host's `sessionController` and
+ * `workspaceRegistry`. Online update uses the Host's `pluginManager`.
  *
  * @module dsh-codex-tools
  */
 
-import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CuaReplClient } from "./lib/cua-repl-client.mjs";
 import { defineTool } from "./lib/define-tool.mjs";
+import { AxClient } from "./lib/ax-client.mjs";
+import { CdpBrowser } from "./lib/cdp-browser.mjs";
 import { createComputerTool } from "./lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "./lib/browser-tool.mjs";
 import { createSessionTool } from "./lib/session-tool.mjs";
@@ -56,13 +47,9 @@ function readOwnVersion() {
  */
 export function apply(ctx, config = {}) {
   const settings = config ?? {};
-  const codexSessionId = settings.codexSessionId ?? randomUUID();
-  const client = new CuaReplClient({
-    surfaces: settings.surfaces ?? "computer,browser",
-    callTimeoutMs: settings.callTimeoutMs,
-    logger: ctx.logger,
-    requestMeta: () => ({ session_id: codexSessionId, turn_id: randomUUID() }),
-  });
+  const ax = new AxClient();
+  const browser = new CdpBrowser({ profile: "browser" });
+  const browserUse = new CdpBrowser({ profile: "browser-use" });
 
   const define = (options) => defineTool(options);
   const getService = (serviceName) => ctx.get(serviceName);
@@ -82,13 +69,13 @@ export function apply(ctx, config = {}) {
 
   const definitions = [];
   if (settings.computerUse !== false) {
-    definitions.push(createComputerTool({ client, defineTool: define }));
+    definitions.push(createComputerTool({ ax, defineTool: define }));
   }
   if (settings.browser !== false) {
-    definitions.push(createBrowserTool({ client, defineTool: define }));
+    definitions.push(createBrowserTool({ driver: browser, defineTool: define }));
   }
   if (settings.browserUse !== false) {
-    definitions.push(createBrowserUseTool({ client, defineTool: define }));
+    definitions.push(createBrowserUseTool({ driver: browserUse, defineTool: define }));
   }
   if (settings.sessionMessaging !== false) {
     definitions.push(createSessionTool({ defineTool: define, getService }));
@@ -103,7 +90,9 @@ export function apply(ctx, config = {}) {
 
   const dispose = () => {
     updateService?.dispose();
-    void client.dispose().catch(() => {});
+    void ax.dispose().catch(() => {});
+    void browser.dispose().catch(() => {});
+    void browserUse.dispose().catch(() => {});
   };
   if (typeof ctx.on === "function") ctx.on("dispose", dispose);
   else if (typeof ctx.effect === "function") ctx.effect(() => dispose);

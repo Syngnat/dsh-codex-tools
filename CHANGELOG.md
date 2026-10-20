@@ -4,6 +4,22 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-20
+
+### Changed
+
+- `computer_use`, `browser`, and `browser_use` no longer start Codex or ChatGPT.app.
+- macOS `computer_use` is the bundled `bin/dsh-ax` helper (Accessibility and Quartz).
+- Windows `computer_use` is `bin/dsh-uia.exe`. The first call builds it from `native/dsh-uia.cs` with the C# compiler that ships with Windows. No PowerShell version is required.
+- `browser` and `browser_use` each launch their own Chrome window over the DevTools Protocol, with separate profiles under `~/.dsh/dsh-codex-tools/`.
+
+### Breaking
+
+- A logged-in Chrome window and the ChatGPT extension are no longer used. Sign in again inside the window this plugin opens.
+- Installations that came from GitHub can move to this release with `codex_tools_update`. A local `link:` checkout still has to be remounted and is not replaced by the updater.
+
+[2.0.0]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.0
+
 ## [1.0.2] - 2026-10-20
 
 ### Added
