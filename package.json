@@ -1,0 +1,52 @@
+{
+  "name": "@local/dsh-codex-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Computer use, browser control and cross-session messaging for the DeepSeek Harness, ported from the Codex desktop client.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "dsh": ">=0.2.1-rc.1",
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib/*.mjs",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs/*.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/unit.test.mjs",
+    "test:live": "node --test tests/live.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Syngnat/dsh-codex-tools.git"
+  },
+  "homepage": "https://github.com/Syngnat/dsh-codex-tools#readme",
+  "bugs": {
+    "url": "https://github.com/Syngnat/dsh-codex-tools/issues"
+  },
+  "author": "Syngnat",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "computer-use",
+    "browser",
+    "codex"
+  ]
+}

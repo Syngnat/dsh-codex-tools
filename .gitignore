@@ -1,0 +1,5 @@
+node_modules/
+*.tgz
+*.log
+.release-check/
+.DS_Store
