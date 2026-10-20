@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-10-20
+
+### Fixed
+
+- Declare the `./client` package export. Without it the web client never loads `client.js`, so the Codex Tools sidebar entry does not appear.
+
+[2.0.2]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.2
+
 ## [2.0.1] - 2026-10-20
 
 ### Added

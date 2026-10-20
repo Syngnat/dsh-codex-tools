@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-codex-tools",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "private": true,
   "description": "Computer use, browser control and cross-session messaging for the DeepSeek Harness, ported from the Codex desktop client.",
   "type": "module",
@@ -11,7 +11,8 @@
   },
   "exports": {
     ".": "./index.js",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./client": "./client.js"
   },
   "files": [
     "index.js",
