@@ -4,6 +4,22 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.8] - 2026-10-20
+
+### Fixed
+
+- Settings text uses the host label and border tokens. In the light theme the title, row names, and selected tab no longer fall back to near-white.
+
+### Changed
+
+- Rows that were only labeled unavailable now do something. Excel can be turned off even when any app is allowed. Lock-screen mode refuses computer use while the session is locked, and still cannot type on the secure lock desktop.
+- The browser page records addresses this plugin opens, can clear that list, and stops recording when history access is deny.
+- Saved logins stay on this machine and fill the matching site. The reply and the settings list do not show the password. Contact fields fill empty name, email, phone, and address inputs.
+- Extensions can be disabled as a group or one by one, and an unpacked extension directory is loaded the next time the owned Chrome window starts.
+- Download location and the save dialog are applied to that window. Download history is listed. Camera, microphone, location, and notification choices are applied when a page opens.
+
+[2.0.8]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.8
+
 ## [2.0.7] - 2026-10-20
 
 ### Fixed

@@ -12,7 +12,11 @@ import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
 import { UPDATE_PAGE_PATH, updatePageAction } from "../lib/update-host.mjs";
 import { SETTINGS_PATH } from "../lib/settings-host.mjs";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { browserDenial, computerDenial, normalizeSettings } from "../lib/settings-store.mjs";
+import { extensionLaunchFlags, isExcelApp, listPasswordSummaries, presentUrl, savePassword, useDataRoot } from "../lib/owned-data.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
 import { apply, inject } from "../index.js";
@@ -474,5 +478,35 @@ test("each browser window can be closed from settings", () => {
   const settings = normalizeSettings({ browserUseEnabled: false });
   assert.equal(browserDenial(settings, "browser"), null);
   assert.equal(browserDenial(settings, "browser-use"), "浏览器已在设置里关闭。");
+});
+
+test("Excel and the lock screen are real permissions", () => {
+  assert.equal(isExcelApp("Microsoft Excel"), true);
+  assert.equal(isExcelApp("EXCEL.EXE"), true);
+  assert.equal(isExcelApp("Safari"), false);
+  const open = normalizeSettings({});
+  assert.equal(open.excelEnabled, true);
+  assert.equal(open.lockScreen, false);
+  assert.equal(computerDenial(open, "Microsoft Excel"), null);
+  assert.equal(computerDenial(normalizeSettings({ excelEnabled: false, anyApp: true }), "Microsoft Excel"), "Microsoft Excel 已在设置里关闭。");
+  assert.equal(computerDenial(normalizeSettings({ anyApp: false, excelEnabled: true }), "Microsoft Excel"), null);
+  assert.match(computerDenial(open, "Safari", { locked: true }), /锁屏/);
+  assert.equal(computerDenial(normalizeSettings({ lockScreen: true }), "Safari", { locked: true }), null);
+});
+
+test("extension flags, visible URLs, and saved logins stay out of the summary", () => {
+  assert.deepEqual(extensionLaunchFlags({ extensionsEnabled: false }), ["--disable-extensions"]);
+  assert.deepEqual(extensionLaunchFlags({ extraExtensionPaths: ["C:\\ext"] }), ["--load-extension=C:\\ext"]);
+  assert.equal(presentUrl("https://example.com/path?q=1#x", false), "https://example.com");
+  const dir = mkdtempSync(join(tmpdir(), "codex-tools-"));
+  useDataRoot(dir);
+  try {
+    savePassword({ origin: "https://example.com/login", username: "ada", password: "secret" });
+    assert.deepEqual(listPasswordSummaries(), [{ id: "https://example.com\nada", origin: "https://example.com", username: "ada" }]);
+    assert.equal(JSON.stringify(listPasswordSummaries()).includes("secret"), false);
+  } finally {
+    useDataRoot(null);
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
