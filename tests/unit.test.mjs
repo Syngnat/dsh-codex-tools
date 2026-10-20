@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
+import { updatePageAction } from "../lib/update-host.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
 import { apply } from "../index.js";
@@ -387,5 +388,12 @@ test("computer helper selects the macOS accessibility binary on darwin", () => {
 
 test("computer helper rejects systems other than macOS and Windows", () => {
   assert.throws(() => computerHelperLaunch("linux"), /does not support linux/);
+});
+
+test("the update page accepts check and a confirmed install only", () => {
+  assert.equal(updatePageAction({ action: "check" }), "check");
+  assert.equal(updatePageAction({ action: "install", confirm: true }), "install");
+  assert.equal(updatePageAction({ action: "install", confirm: false }), null);
+  assert.equal(updatePageAction({ action: "install", confirm: true, extra: 1 }), null);
 });
 

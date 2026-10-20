@@ -22,6 +22,7 @@ import { createBrowserTool, createBrowserUseTool } from "./lib/browser-tool.mjs"
 import { createSessionTool } from "./lib/session-tool.mjs";
 import { createUpdateTool } from "./lib/update-tool.mjs";
 import { UpdateService } from "./lib/update-service.mjs";
+import { installUpdatePageHost } from "./lib/update-host.mjs";
 
 /** Plugin name used by the loader. */
 export const name = "codex-tools";
@@ -87,6 +88,8 @@ export function apply(ctx, config = {}) {
   for (const definition of definitions) {
     ctx.tools.register(definition);
   }
+
+  installUpdatePageHost(ctx, { getService, createService });
 
   const dispose = () => {
     updateService?.dispose();

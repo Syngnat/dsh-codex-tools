@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-10-20
+
+### Added
+
+- A sidebar page for online update, the same kind of check-and-confirm entry used by the prompt-assist plugin. It calls the Host route `/api/dsh-codex-tools.update`. Installing still requires an explicit confirmation and still refuses a local `link:` checkout.
+
+[2.0.1]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.1
+
 ## [2.0.0] - 2026-10-20
 
 ### Changed
