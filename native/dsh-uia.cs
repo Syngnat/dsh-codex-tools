@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Automation;
 using System.Windows.Forms;
@@ -17,6 +18,86 @@ static class NativeInput {
     public const int LeftDown = 0x0002;
     public const int LeftUp = 0x0004;
     public const int Wheel = 0x0800;
+}
+
+static class AgentCursor {
+    const int WsExTransparent = 0x20;
+    const int WsExToolWindow = 0x80;
+    const int WsExNoActivate = 0x08000000;
+    const int WsExTopMost = 0x8;
+    static readonly ManualResetEvent Ready = new ManualResetEvent(false);
+    static CursorForm Form;
+    static System.Windows.Forms.Timer HideTimer;
+
+    sealed class CursorForm : Form {
+        protected override bool ShowWithoutActivation { get { return true; } }
+        protected override CreateParams CreateParams {
+            get {
+                var cp = base.CreateParams;
+                cp.ExStyle |= WsExTransparent | WsExToolWindow | WsExNoActivate | WsExTopMost;
+                return cp;
+            }
+        }
+        public CursorForm() {
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            TopMost = true;
+            StartPosition = FormStartPosition.Manual;
+            BackColor = Color.Magenta;
+            TransparencyKey = Color.Magenta;
+            Size = new Size(22, 26);
+            DoubleBuffered = true;
+        }
+        protected override void OnPaint(PaintEventArgs e) {
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var arrow = new[] {
+                new Point(2, 1), new Point(2, 18), new Point(7, 13),
+                new Point(12, 22), new Point(15, 20), new Point(10, 12), new Point(18, 12)
+            };
+            using (var shadow = new SolidBrush(Color.FromArgb(90, 0, 0, 0)))
+                g.FillPolygon(shadow, new[] {
+                    new Point(3, 2), new Point(3, 19), new Point(8, 14),
+                    new Point(13, 23), new Point(16, 21), new Point(11, 13), new Point(19, 13)
+                });
+            using (var fill = new SolidBrush(Color.White))
+                g.FillPolygon(fill, arrow);
+            using (var pen = new Pen(Color.FromArgb(37, 99, 235), 1.4f))
+                g.DrawPolygon(pen, arrow);
+        }
+    }
+
+    public static void Show(int x, int y) {
+        Ensure();
+        if (!Ready.WaitOne(800) || Form == null) return;
+        try {
+            Form.BeginInvoke((MethodInvoker)delegate {
+                Form.Location = new Point(Math.Max(0, x - 2), Math.Max(0, y - 1));
+                Form.Invalidate();
+                if (!Form.Visible) Form.Show();
+                HideTimer.Stop();
+                HideTimer.Interval = 500;
+                HideTimer.Start();
+            });
+        } catch (Exception) { }
+    }
+
+    static void Ensure() {
+        if (Form != null) return;
+        var thread = new Thread(new ThreadStart(delegate {
+            Form = new CursorForm();
+            var created = Form.Handle;
+            if (created == IntPtr.Zero) return;
+            HideTimer = new System.Windows.Forms.Timer();
+            HideTimer.Interval = 500;
+            HideTimer.Tick += delegate { HideTimer.Stop(); if (Form != null) Form.Hide(); };
+            Ready.Set();
+            Application.Run();
+        }));
+        thread.IsBackground = true;
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+    }
 }
 
 sealed class Program {
@@ -194,20 +275,34 @@ sealed class Program {
         return element.TryGetCurrentPattern(pattern, out value) ? value : null;
     }
 
-    static void ClickPoint(int x, int y) {
+    static void Mark(int x, int y) {
+        AgentCursor.Show(x, y);
         NativeInput.SetCursorPos(x, y);
+        Thread.Sleep(160);
+    }
+
+    static void MarkElement(AutomationElement element) {
+        var rect = element.Current.BoundingRectangle;
+        if (rect.Width <= 0 || rect.Height <= 0) return;
+        Mark((int)(rect.X + rect.Width / 2), (int)(rect.Y + rect.Height / 2));
+    }
+
+    static void ClickPoint(int x, int y) {
+        Mark(x, y);
         NativeInput.mouse_event(NativeInput.LeftDown, 0, 0, 0, 0);
         NativeInput.mouse_event(NativeInput.LeftUp, 0, 0, 0, 0);
     }
 
     static void ClickElement(AutomationElement element) {
+        MarkElement(element);
         var invoke = TryPattern(element, InvokePattern.Pattern) as InvokePattern;
         if (invoke != null) { invoke.Invoke(); return; }
         var toggle = TryPattern(element, TogglePattern.Pattern) as TogglePattern;
         if (toggle != null) { toggle.Toggle(); return; }
         var rect = element.Current.BoundingRectangle;
         if (rect.Width <= 0 || rect.Height <= 0) throw new InvalidOperationException("element has no box to click");
-        ClickPoint((int)(rect.X + rect.Width / 2), (int)(rect.Y + rect.Height / 2));
+        NativeInput.mouse_event(NativeInput.LeftDown, 0, 0, 0, 0);
+        NativeInput.mouse_event(NativeInput.LeftUp, 0, 0, 0, 0);
     }
 
     static Dictionary<string, object> Click(Dictionary<string, object> args) {
@@ -323,9 +418,9 @@ sealed class Program {
         var y1 = Convert.ToInt32(Arg(args, "from_y"));
         var x2 = Convert.ToInt32(Arg(args, "to_x"));
         var y2 = Convert.ToInt32(Arg(args, "to_y"));
-        NativeInput.SetCursorPos(x1, y1);
+        Mark(x1, y1);
         NativeInput.mouse_event(NativeInput.LeftDown, 0, 0, 0, 0);
-        NativeInput.SetCursorPos(x2, y2);
+        Mark(x2, y2);
         NativeInput.mouse_event(NativeInput.LeftUp, 0, 0, 0, 0);
         return new Dictionary<string, object> { { "text", "dragged" } };
     }

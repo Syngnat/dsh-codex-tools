@@ -22,7 +22,8 @@ const COPY = {
     allowed: "始终允许的应用",
     allowedEmpty: "还没有始终允许的应用。关闭任意应用后，只有这里列出的应用可以被操作。",
     add: "添加",
-    placeholder: "应用名称或标识，例如 Safari、com.apple.Safari",
+    placeholder: "应用名称或标识，例如 notepad、explorer",
+    addMissing: "先输入应用名称或标识。",
     remove: "移除",
     browserTitle: "浏览器",
     browserSubtitle: "管理浏览器窗口的偏好和访问范围。",
@@ -127,7 +128,8 @@ function Icon() {
     h("path", { d: "M8 20h8M12 16v4" }));
 }
 
-const pageStyle = { padding: "28px 32px 48px", maxWidth: 760, color: "var(--dsw-alias-label-primary, #1a1a1a)" };
+const pageStyle = { boxSizing: "border-box", width: "100%", height: "100%", maxHeight: "100vh", overflowY: "auto", overflowX: "hidden", color: "var(--dsw-alias-label-primary, #1a1a1a)" };
+const frameStyle = { boxSizing: "border-box", maxWidth: 760, padding: "28px 32px 48px" };
 const titleStyle = { margin: "0 0 6px", fontSize: 28, fontWeight: 650 };
 const subtitleStyle = { margin: "0 0 22px", color: "var(--dsw-alias-label-secondary, #5c6570)", fontSize: 14 };
 const labelStyle = { margin: "18px 0 8px", fontSize: 13, color: "var(--dsw-alias-label-secondary, #5c6570)" };
@@ -162,6 +164,22 @@ function Page({ returnToConversation }) {
   const [tab, setTab] = React.useState(0);
   const [settings, setSettings] = React.useState(null);
   const [draft, setDraft] = React.useState("");
+  const draftRef = React.useRef("");
+  const [addHint, setAddHint] = React.useState("");
+  function rememberDraft(value) {
+    draftRef.current = value;
+    setDraft(value);
+  }
+  function addAllowed() {
+    const name = draftRef.current.trim();
+    if (!name) {
+      setAddHint(text.addMissing);
+      return;
+    }
+    setAddHint("");
+    patch("allowedApps", [...(settings.allowedApps ?? []), name]);
+    rememberDraft("");
+  }
   const [login, setLogin] = React.useState({ origin: "", username: "", password: "" });
   const [contactDraft, setContactDraft] = React.useState({ name: "", email: "", phone: "", address: "" });
   const [extensionPath, setExtensionPath] = React.useState("");
@@ -195,10 +213,10 @@ function Page({ returnToConversation }) {
     try { const value = await request({ action: "clear-browsing-data" }); setSettings(value); setStatus(text.cleared); }
     catch { setError(text.clearError); setStatus(""); }
   }
-  if (!settings) return h("section", { style: pageStyle }, h("h1", { style: titleStyle }, text.computerTitle), h("p", null, error || "…"));
+  if (!settings) return h("section", { style: pageStyle }, h("div", { style: frameStyle }, h("h1", { style: titleStyle }, text.computerTitle), h("p", null, error || "…")));
   const accessOptions = [["always", text.always], ["ask", text.ask], ["deny", text.deny]];
   const targetOptions = [["app", text.targetApp], ["system", text.targetSystem]];
-  return h("section", { style: pageStyle },
+  return h("section", { style: pageStyle }, h("div", { style: frameStyle },
     h("div", { style: { display: "flex", gap: 8, marginBottom: 18 } }, text.tabs.map((name, index) => h("button", { key: name, type: "button", onClick: () => setTab(index), style: { ...controlStyle, background: tab === index ? "var(--dsw-alias-interactive-bg-hover, #f2f3f5)" : "transparent", border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)" } }, name))),
     tab === 0 ? h("div", null,
       h("h1", { style: titleStyle }, text.computerTitle),
@@ -222,8 +240,9 @@ function Page({ returnToConversation }) {
             h("button", { type: "button", "aria-label": text.remove, onClick: () => patch("allowedApps", settings.allowedApps.filter((item) => item !== name)), style: { ...controlStyle, color: "#f87171" } }, "删除")))),
         h("div", { style: hairline }),
         h("div", { style: { display: "flex", gap: 8, padding: 12 } },
-          h("input", { value: draft, placeholder: text.placeholder, onChange: (event) => setDraft(event.target.value), onKeyDown: (event) => { if (event.key === "Enter" && draft.trim()) { patch("allowedApps", [...settings.allowedApps, draft.trim()]); setDraft(""); } }, style: { flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }),
-          h("button", { type: "button", onClick: () => { if (!draft.trim()) return; patch("allowedApps", [...settings.allowedApps, draft.trim()]); setDraft(""); }, style: controlStyle }, text.add))))
+          h("input", { value: draft, placeholder: text.placeholder, onChange: (event) => { setAddHint(""); rememberDraft(event.target.value); }, onKeyDown: (event) => { if (event.key === "Enter") addAllowed(); }, style: { flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }),
+          h("button", { type: "button", onClick: addAllowed, style: controlStyle }, text.add)),
+        addHint ? h("div", { style: { ...descStyle, padding: "0 12px 12px", color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, addHint) : null))
     : h("div", null,
       h("h1", { style: titleStyle }, text.browserTitle),
       h("p", { style: subtitleStyle }, text.browserSubtitle),
@@ -289,7 +308,7 @@ function Page({ returnToConversation }) {
     h("div", { style: { display: "flex", gap: 12, alignItems: "center", marginTop: 18 } },
       h("button", { type: "button", onClick: returnToConversation, style: controlStyle }, text.back),
       status ? h("span", { style: descStyle }, status) : null,
-      error ? h("span", null, error) : null));
+      error ? h("span", null, error) : null)));
 }
 
 export const inject = ["slots", "layout", "locale"];

@@ -435,6 +435,7 @@ test("windows helper is compiled with the built-in C# compiler", () => {
   assert.match(plan.output, /dsh-uia\.exe$/);
   assert.match(plan.source, /dsh-uia\.cs$/);
   assert.equal(plan.args.includes(plan.source), true);
+  assert.equal(plan.args.some((arg) => arg.includes("WindowsBase.dll")), true);
   assert.equal(JSON.stringify(plan).toLowerCase().includes("powershell"), false);
 });
 

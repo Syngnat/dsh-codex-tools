@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.9] - 2026-10-20
+
+### Fixed
+
+- Windows `computer_use` compiles. The helper now references `WindowsBase.dll`, which defines the rectangles UI Automation returns. The tool description no longer says it only controls macOS apps.
+- A small pointer appears at the click or drag point and hides about half a second after the action. It is not shown when the helper starts, and it does not stay on screen after computer use ends. The same pointer is used in the owned browser window.
+- The settings page scrolls with the main pane. The scrollbar is no longer stuck in the middle of the blank area.
+- Adding an always-allowed app with an empty name says so, instead of doing nothing.
+
+[2.0.9]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.9
+
 ## [2.0.8] - 2026-10-20
 
 ### Fixed
