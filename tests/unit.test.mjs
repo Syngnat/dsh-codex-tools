@@ -10,11 +10,12 @@ import assert from "node:assert/strict";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
-import { updatePageAction } from "../lib/update-host.mjs";
+import { UPDATE_PAGE_PATH, updatePageAction } from "../lib/update-host.mjs";
+import { SETTINGS_PATH } from "../lib/settings-host.mjs";
 import { browserDenial, computerDenial, normalizeSettings } from "../lib/settings-store.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
-import { apply } from "../index.js";
+import { apply, inject } from "../index.js";
 
 /** A context that records registrations and serves no services. */
 function fakeContext() {
@@ -84,6 +85,59 @@ test("apply honours the per-tool disable switches", () => {
   const ctx = fakeContext();
   apply(ctx, { computerUse: false, browser: false, browserUse: false, update: false });
   assert.deepEqual([...ctx.registered.keys()], ["session_message"]);
+});
+
+/**
+ * Cordis throws when a plugin reads a service it did not inject. Optional
+ * chaining still calls the getter, which a plain object does not reproduce.
+ * @param {string[]} injected - Service names the plugin declared.
+ */
+function cordisContext(injected) {
+  const allowed = new Set(injected);
+  const registered = new Map();
+  const routes = [];
+  const services = {
+    tools: {
+      register(definition) {
+        registered.set(definition.name, definition);
+        return () => registered.delete(definition.name);
+      },
+    },
+    connection: {
+      fetch: {
+        register(route) {
+          routes.push(route.path);
+          return async () => {};
+        },
+      },
+    },
+  };
+  return new Proxy(services, {
+    get(target, prop) {
+      if (prop === "registered") return registered;
+      if (prop === "routes") return routes;
+      if (prop === "get") return () => undefined;
+      if (prop === "on") return () => {};
+      if (prop === "logger") return { debug() {}, info() {}, warn() {} };
+      if (prop === "effect") return (run) => run();
+      if (!allowed.has(prop)) throw new Error(`cannot get property "${String(prop)}" without inject`);
+      if (target[prop] === undefined) throw new Error(`cannot get required service "${String(prop)}" in inactive context`);
+      return target[prop];
+    },
+  });
+}
+
+test("reading connection without inject aborts apply", () => {
+  const ctx = cordisContext(inject.filter((name) => name !== "connection"));
+  assert.throws(() => apply(ctx, {}), /cannot get property "connection" without inject/);
+});
+
+test("declaring connection lets apply register the host routes", () => {
+  assert.ok(inject.includes("tools"));
+  assert.ok(inject.includes("connection"));
+  const ctx = cordisContext(inject);
+  apply(ctx, {});
+  assert.deepEqual([...ctx.routes].sort(), [SETTINGS_PATH, UPDATE_PAGE_PATH].sort());
 });
 
 test("computer_use exposes every documented action", () => {

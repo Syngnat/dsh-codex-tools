@@ -28,8 +28,12 @@ import { installSettingsHost } from "./lib/settings-host.mjs";
 /** Plugin name used by the loader. */
 export const name = "codex-tools";
 
-/** Services this plugin needs before it can mount. */
-export const inject = ["tools"];
+/**
+ * Services this plugin needs before it can mount.
+ * `connection` is required: the settings and update routes read
+ * `ctx.connection.fetch`, and Cordis throws if that property was not injected.
+ */
+export const inject = ["tools", "connection"];
 
 /** The version of the code that is actually loaded, read from the shipped manifest. */
 function readOwnVersion() {

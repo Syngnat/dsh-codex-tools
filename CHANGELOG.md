@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.7] - 2026-10-20
+
+### Fixed
+
+- Declare `connection` in the host plugin inject list. Without it, Cordis throws `cannot get property "connection" without inject` while registering the settings and update routes, and `local-codex-tools` does not activate. Optional chaining does not prevent that read.
+
+[2.0.7]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.7
+
 ## [2.0.6] - 2026-10-20
 
 ### Changed
