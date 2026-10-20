@@ -23,6 +23,7 @@ import { createSessionTool } from "./lib/session-tool.mjs";
 import { createUpdateTool } from "./lib/update-tool.mjs";
 import { UpdateService } from "./lib/update-service.mjs";
 import { installUpdatePageHost } from "./lib/update-host.mjs";
+import { installSettingsHost } from "./lib/settings-host.mjs";
 
 /** Plugin name used by the loader. */
 export const name = "codex-tools";
@@ -90,6 +91,7 @@ export function apply(ctx, config = {}) {
   }
 
   installUpdatePageHost(ctx, { getService, createService });
+  installSettingsHost(ctx);
 
   const dispose = () => {
     updateService?.dispose();

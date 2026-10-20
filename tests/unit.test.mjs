@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
 import { updatePageAction } from "../lib/update-host.mjs";
+import { browserDenial, computerDenial, normalizeSettings } from "../lib/settings-store.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
 import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
 import { apply } from "../index.js";
@@ -395,5 +396,23 @@ test("the update page accepts check and a confirmed install only", () => {
   assert.equal(updatePageAction({ action: "install", confirm: true }), "install");
   assert.equal(updatePageAction({ action: "install", confirm: false }), null);
   assert.equal(updatePageAction({ action: "install", confirm: true, extra: 1 }), null);
+});
+
+test("settings keep only the computer and browser switches", () => {
+  const settings = normalizeSettings({ computerEnabled: false, anyApp: false, allowedApps: [" Safari ", "safari", 3], browserEnabled: false, extra: true });
+  assert.deepEqual(settings, { computerEnabled: false, anyApp: false, allowedApps: ["Safari"], browserEnabled: false, browserUseEnabled: true });
+});
+
+test("computer use refuses an app that is not always allowed", () => {
+  const settings = normalizeSettings({ anyApp: false, allowedApps: ["Safari"] });
+  assert.equal(computerDenial(settings, "Notes"), "「Notes」不在始终允许的应用里。到「电脑操作」里打开任意应用，或把这个应用加进去。");
+  assert.equal(computerDenial(settings, "Safari"), null);
+  assert.equal(computerDenial(normalizeSettings({ computerEnabled: false }), "Safari"), "电脑操作已在设置里关闭。");
+});
+
+test("each browser window can be closed from settings", () => {
+  const settings = normalizeSettings({ browserUseEnabled: false });
+  assert.equal(browserDenial(settings, "browser"), null);
+  assert.equal(browserDenial(settings, "browser-use"), "另一个浏览器窗口已在设置里关闭。");
 });
 

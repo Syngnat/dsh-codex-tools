@@ -4,6 +4,18 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5] - 2026-10-20
+
+### Added
+
+- The 电脑操作 page is now the settings page. It has an Any App switch, an always-allowed app list, and separate switches for the two Chrome windows. The tools read those settings on every call.
+
+### Fixed
+
+- The page no longer calls `connection.createSharedFetchHandler`, which the web client does not provide.
+
+[2.0.5]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.5
+
 ## [2.0.4] - 2026-10-20
 
 ### Changed
