@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-10-20
+
+### Changed
+
+- The settings page now follows the two Codex pages: 电脑操控 and 浏览器. Any app, the allow list, both browser windows, full CDP access, and clearing the owned Chrome profiles take effect. Excel, lock-screen control, passwords, extensions, and per-site permissions stay visible and marked unavailable.
+
+[2.0.6]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.6
+
 ## [2.0.5] - 2026-10-20
 
 ### Added

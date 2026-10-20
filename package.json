@@ -1,8 +1,8 @@
 {
   "name": "@local/dsh-codex-tools",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "private": true,
-  "description": "Operate desktop apps and the browser, and pass messages between sessions.",
+  "description": "Operate desktop apps and browser windows, and manage those permissions.",
   "type": "module",
   "license": "MIT",
   "engines": {

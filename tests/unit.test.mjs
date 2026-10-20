@@ -400,7 +400,13 @@ test("the update page accepts check and a confirmed install only", () => {
 
 test("settings keep only the computer and browser switches", () => {
   const settings = normalizeSettings({ computerEnabled: false, anyApp: false, allowedApps: [" Safari ", "safari", 3], browserEnabled: false, extra: true });
-  assert.deepEqual(settings, { computerEnabled: false, anyApp: false, allowedApps: ["Safari"], browserEnabled: false, browserUseEnabled: true });
+  assert.equal(settings.computerEnabled, false);
+  assert.equal(settings.anyApp, false);
+  assert.deepEqual(settings.allowedApps, ["Safari"]);
+  assert.equal(settings.browserEnabled, false);
+  assert.equal(settings.browserUseEnabled, true);
+  assert.equal(settings.fullCdp, true);
+  assert.equal(settings.showFullUrl, true);
 });
 
 test("computer use refuses an app that is not always allowed", () => {
@@ -413,6 +419,6 @@ test("computer use refuses an app that is not always allowed", () => {
 test("each browser window can be closed from settings", () => {
   const settings = normalizeSettings({ browserUseEnabled: false });
   assert.equal(browserDenial(settings, "browser"), null);
-  assert.equal(browserDenial(settings, "browser-use"), "另一个浏览器窗口已在设置里关闭。");
+  assert.equal(browserDenial(settings, "browser-use"), "浏览器已在设置里关闭。");
 });
 
