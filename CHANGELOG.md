@@ -4,6 +4,27 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-20
+
+### Added
+
+- `codex_tools_update`: three actions — `status`, `check`, `install` — so an
+  agent can keep this plugin current from its GitHub releases. `check` is
+  read-only. `install` requires `confirm: true`, pins the target to an immutable
+  commit, refuses install scripts, verifies the recorded bundle row, and
+  restores the previous version if the replacement fails.
+- 30 offline tests covering version parsing, release-metadata validation, source
+  policy, eligibility, the replacement flow with recovery, and the tool surface.
+- After `computer_use` and `browser` return, the plugin calls the runtime's
+  `turn_ended` hook so Sky's software cursor is dismissed. Leaving that call out
+  left the small overlay cursor on screen after the tool finished.
+
+
+### Notes
+
+- Online update only handles an installation that came from this repository. A
+  local `link:` checkout is refused, and `status` names the reason.
+
 ## [1.0.0] - 2026-10-20
 
 First release.
@@ -36,4 +57,5 @@ First release.
 - `computer_use` does not activate windows or move the pointer, and draws no
   overlay.
 
+[1.0.1]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.0

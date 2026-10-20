@@ -2,15 +2,16 @@
 
 # Codex Tools for DeepSeek Harness
 
-Computer use, browser control and cross-session messaging as three agent tools, ported from the Codex desktop client.
+Computer use, browser control, cross-session messaging and online self-update as four agent tools, ported from the Codex desktop client.
 
-A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). The first two tools ride on the same runtime Codex itself uses; the third is the Harness equivalent of Codex's cross-session messaging.
+A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). The first two tools ride on the same runtime Codex itself uses; the third is the Harness equivalent of Codex's cross-session messaging; the fourth updates this plugin from its GitHub releases.
 
 | Tool | What it does | Where it comes from |
 | --- | --- | --- |
 | `computer_use` | Reads and drives native macOS apps through their accessibility tree and screenshots | Codex's Computer Use runtime |
 | `browser` | Lists browsers and tabs, binds one, reads it, clicks, types, navigates | Codex's browser-desktop provider |
 | `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Harness-native services |
+| `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` |
 
 ## Requirements
 
@@ -50,6 +51,7 @@ The plugin registers itself through `cordis.patch.yml`:
 | `computerUse` | `true` | Register the `computer_use` tool. |
 | `browser` | `true` | Register the `browser` tool. |
 | `sessionMessaging` | `true` | Register the `session_message` tool. |
+| `update` | `true` | Register the `codex_tools_update` tool. |
 | `callTimeoutMs` | `120000` | Per-call deadline for one REPL evaluation. |
 | `codexSessionId` | generated | Stable `session_id` reported in the Codex turn metadata. |
 
@@ -88,13 +90,19 @@ The upstream confirmation policy — delete data, transmit sensitive data, insta
 software, solve CAPTCHAs, change system settings — is a *model* obligation, not
 something the runtime enforces, so it is restated in the tool description.
 
-### It is invisible by design
+### What you see on screen
 
-`computer_use` does not activate the target window and does not move the pointer:
-on macOS the runtime performs accessibility actions (`AXPress`, `AXValue`, …)
-directly on elements. The "ChatGPT is using your computer" overlay is part of the
-ChatGPT host, which this plugin does not go through, so nothing is drawn on
-screen. An operation can succeed on a window that is behind another app.
+`computer_use` does not activate the target window and does not move the system
+pointer: on macOS the runtime performs accessibility actions (`AXPress`,
+`AXValue`, …) directly on elements. An operation can succeed on a window that is
+behind another app.
+
+The ChatGPT host overlay ("ChatGPT is using your computer") is not drawn,
+because this plugin talks to the runtime directly. The runtime *does* show its
+own small software cursor while an action runs. Codex dismisses that cursor
+with the hidden `turn_ended` tool at the end of a turn; this plugin fires the
+same notification when `computer_use` or `browser` returns, so the cursor does
+not stay on screen afterwards.
 
 ## `browser`
 
@@ -134,6 +142,48 @@ absolute path that is not registered yet is created as a new workspace.
 
 This tool uses the Host's `sessionController` and `workspaceRegistry` services,
 so it needs no storage access and no Codex runtime.
+
+## `codex_tools_update`
+
+Actions: `status`, `check`, `install`.
+
+Keeps the plugin itself current. The three actions are the three separate steps
+of the flow, and only the last one changes anything:
+
+| Action | What it does |
+| --- | --- |
+| `status` | Reports the running version, the last check, and whether this installation can be replaced online. |
+| `check` | Reads the latest stable release from GitHub. Read-only: it downloads and installs nothing. |
+| `install` | Replaces the bundle with the latest release. Requires `confirm: true`. |
+
+Ask the user before passing `confirm: true`: the plugin is replaced in place and
+the Harness may need a restart.
+
+### What the install guarantees
+
+- **A fixed source.** The repository, the release endpoint and the install spec
+  are constants in the plugin. No caller-supplied URL, package name, registry or
+  version exemption is accepted.
+- **A pinned target.** The release tag is resolved to an immutable commit, and
+  the `package.json` at that commit must declare this package name, this version
+  and a bundle patch. A mismatch aborts before anything is replaced.
+- **No install scripts.** A manifest declaring `preinstall`, `install`,
+  `postinstall` or `prepare` is refused outright.
+- **Verification after the fact.** Success requires the recorded bundle row to
+  match the pinned commit, not just a manager receipt.
+- **Recovery.** If the replacement fails after the profile has been mutated, the
+  previously running version is reinstalled and re-enabled. If that also fails,
+  the result says so and prints the manual command instead of claiming success.
+- **No foreign overwrite.** An installation another manager caller made in the
+  meantime is detected and left alone.
+
+### What it will not do
+
+Online update only handles an installation that came from this repository. A
+local `link:` checkout, a fork, or a bundle that is not a removable profile
+installation is refused, and `status` names the reason. There is no HTTP route,
+no background polling and no automatic update: nothing happens until the tool is
+called.
 
 ## How Codex does it
 
@@ -176,11 +226,14 @@ Full findings, including the dead ends, are in [docs/implementation.md](<docs/im
 ## Layout
 
 ```
-index.js                 plugin entry: apply / inject, registers the three tools
+index.js                 plugin entry: apply / inject, registers the four tools
 lib/cua-repl-client.mjs  MCP stdio client for the Codex REPL server
 lib/computer-tool.mjs    computer_use
 lib/browser-tool.mjs     browser
 lib/session-tool.mjs     session_message
+lib/update-tool.mjs      codex_tools_update
+lib/update-service.mjs   GitHub release check and bundle replacement
+lib/version.mjs          strict stable-version helpers
 lib/define-tool.mjs      dependency-free defineTool
 cordis.patch.yml         bundle patch
 docs/implementation.md   reverse-engineering report
@@ -189,7 +242,7 @@ docs/implementation.md   reverse-engineering report
 ## Development
 
 ```sh
-npm test          # 20 unit tests, no Codex runtime needed
+npm test          # 50 offline tests, no Codex runtime needed
 npm run test:live # 5 live tests, needs ChatGPT.app
 ```
 

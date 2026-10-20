@@ -2,15 +2,16 @@
 
 # DeepSeek Harness 的 Codex 工具
 
-把 Codex 桌面端的三项能力做成三个 Agent 工具：computer use、浏览器操作、跨会话发消息。
+把 Codex 桌面端的三项能力做成 Agent 工具，并加上插件自身的在线更新：computer use、浏览器操作、跨会话发消息、在线更新。
 
-这是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的插件包。前两个工具直接复用 Codex 自己在用的那套运行时；第三个是 Harness 原生的跨会话消息能力。
+这是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的插件包。前两个工具直接复用 Codex 自己在用的那套运行时；第三个是 Harness 原生的跨会话消息能力；第四个从本仓库的 GitHub Release 更新插件自己。
 
 | 工具 | 做什么 | 来源 |
 | --- | --- | --- |
 | `computer_use` | 通过无障碍树和截图读写 macOS 原生 App | Codex 的 Computer Use 运行时 |
 | `browser` | 列出浏览器与标签页、绑定一个、读取、点击、输入、导航 | Codex 的 browser-desktop provider |
 | `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Harness 原生服务 |
+| `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host `pluginManager` |
 
 ## 环境要求
 
@@ -50,6 +51,7 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 | `computerUse` | `true` | 是否注册 `computer_use` 工具。 |
 | `browser` | `true` | 是否注册 `browser` 工具。 |
 | `sessionMessaging` | `true` | 是否注册 `session_message` 工具。 |
+| `update` | `true` | 是否注册 `codex_tools_update` 工具。 |
 | `callTimeoutMs` | `120000` | 单次 REPL 求值的超时。 |
 | `codexSessionId` | 自动生成 | Codex turn metadata 里上报的固定 `session_id`。 |
 
@@ -83,11 +85,14 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 上游的确认策略（删除数据、传输敏感数据、安装软件、解验证码、改系统设置）是**模型**的义务，
 运行时并不强制，所以这段要求被写进了工具描述里。
 
-### 它本来就是不可见的
+### 屏幕上你会看到什么
 
-`computer_use` 不激活目标窗口，也不移动鼠标指针：macOS 上运行时直接对元素执行无障碍动作
-（`AXPress`、`AXValue` 等）。「ChatGPT is using your computer」那个浮层属于 ChatGPT 宿主，
-本插件不走那条链路，所以屏幕上不会画任何东西。被压在别的 App 后面的窗口也能操作成功。
+`computer_use` 不激活目标窗口，也不移动系统鼠标指针：macOS 上运行时直接对元素执行无障碍动作
+（`AXPress`、`AXValue` 等）。被压在别的 App 后面的窗口也能操作成功。
+
+「ChatGPT is using your computer」那个宿主浮层不会出现，因为本插件直接连运行时。
+但运行时自己会在动作期间画一个很小的软件光标。Codex 在一轮结束时用隐藏的 `turn_ended`
+工具把它收掉；本插件在 `computer_use` / `browser` 返回时发同样的通知，所以光标不会留在屏幕上。
 
 ## `browser`
 
@@ -122,6 +127,33 @@ session_message {
 
 这个工具用的是 Host 的 `sessionController` 和 `workspaceRegistry` 服务，
 不碰存储格式，也不需要 Codex 运行时。
+
+## `codex_tools_update`
+
+动作：`status`、`check`、`install`。
+
+用来更新插件自己。三个动作就是流程的三个独立阶段，只有最后一个会改变任何东西：
+
+| 动作 | 做什么 |
+| --- | --- |
+| `status` | 报告当前运行版本、上次检查结果，以及这个安装能否在线替换。 |
+| `check` | 从 GitHub 读最新稳定版。只读：不下载、不安装任何东西。 |
+| `install` | 用最新版替换 bundle。必须传 `confirm: true`。 |
+
+传 `confirm: true` 之前先问用户：插件是原地替换，Harness 可能需要重启。
+
+### 安装保证什么
+
+- **来源固定。** 仓库、发布接口、安装 spec 都是插件里的常量。不接受调用方传入的 URL、包名、registry 或版本豁免。
+- **目标钉死。** 发布 tag 会解析成不可变 commit，并且该 commit 下的 `package.json` 必须声明本包名、本版本号和 bundle patch。不匹配就在替换任何东西之前中止。
+- **不跑安装脚本。** 声明了 `preinstall`、`install`、`postinstall` 或 `prepare` 的清单直接拒绝。
+- **事后核对。** 成功要求记录的 bundle 行与钉死的 commit 一致，而不只是管理器回执。
+- **可恢复。** 如果 profile 已被改动之后替换失败，会重新安装并启用原来运行的版本。恢复也失败时会明说，并打印手动命令，而不是谎报成功。
+- **不覆盖外来安装。** 期间被其他管理器调用者装上的版本会被识别出来并放过。
+
+### 它不会做什么
+
+在线更新只处理来自本仓库的安装。本地 `link:` 检出、fork，或不是可移除 profile 安装的 bundle 一律拒绝，`status` 会说明原因。没有 HTTP 路由、没有后台轮询、不会自动更新：不调用这个工具就什么都不会发生。
 
 ## Codex 是怎么做的
 
@@ -162,11 +194,14 @@ Codex 在 `ChatGPT.app` 里自带一套 Node 运行时：
 ## 目录结构
 
 ```
-index.js                 插件入口：apply / inject，注册三个工具
+index.js                 插件入口：apply / inject，注册四个工具
 lib/cua-repl-client.mjs  Codex REPL server 的 MCP stdio 客户端
 lib/computer-tool.mjs    computer_use
 lib/browser-tool.mjs     browser
 lib/session-tool.mjs     session_message
+lib/update-tool.mjs      codex_tools_update
+lib/update-service.mjs   GitHub 发布检查与 bundle 替换
+lib/version.mjs          严格稳定版本号
 lib/define-tool.mjs      零依赖的 defineTool
 cordis.patch.yml         bundle patch
 docs/implementation.md   逆向报告
@@ -175,7 +210,7 @@ docs/implementation.md   逆向报告
 ## 开发
 
 ```sh
-npm test          # 20 项单元测试，不需要 Codex 运行时
+npm test          # 50 项离线测试，不需要 Codex 运行时
 npm run test:live # 5 项 live 测试，需要 ChatGPT.app
 ```
 

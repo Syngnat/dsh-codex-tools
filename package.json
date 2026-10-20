@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-codex-tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Computer use, browser control and cross-session messaging for the DeepSeek Harness, ported from the Codex desktop client.",
   "type": "module",
@@ -25,7 +25,7 @@
     "docs/*.md"
   ],
   "scripts": {
-    "test": "node --test tests/unit.test.mjs",
+    "test": "node --test tests/unit.test.mjs tests/update.test.mjs",
     "test:live": "node --test tests/live.test.mjs"
   },
   "dsh": {

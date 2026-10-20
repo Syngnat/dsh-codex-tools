@@ -65,15 +65,20 @@ test("defineTool produces a registry-ready definition", () => {
   assert.deepEqual(definition.output.render({}, "x"), [{ type: "text", text: "x" }]);
 });
 
-test("apply registers exactly the three tools", () => {
+test("apply registers exactly the four tools", () => {
   const ctx = fakeContext();
   apply(ctx, {});
-  assert.deepEqual([...ctx.registered.keys()].sort(), ["browser", "computer_use", "session_message"]);
+  assert.deepEqual([...ctx.registered.keys()].sort(), [
+    "browser",
+    "codex_tools_update",
+    "computer_use",
+    "session_message",
+  ]);
 });
 
 test("apply honours the per-tool disable switches", () => {
   const ctx = fakeContext();
-  apply(ctx, { computerUse: false, browser: false });
+  apply(ctx, { computerUse: false, browser: false, update: false });
   assert.deepEqual([...ctx.registered.keys()], ["session_message"]);
 });
 
@@ -247,11 +252,17 @@ test("session_message resolves a workspace by id, path or title", async () => {
 /** A client that records the generated script instead of running it. */
 function recordingClient() {
   const scripts = [];
+  const turnEndedCalls = [];
   return {
     scripts,
+    turnEndedCalls,
     runJs: async (code) => {
       scripts.push(code);
       return { content: [{ type: "text", text: "ok" }] };
+    },
+    turnEnded: async (event) => {
+      turnEndedCalls.push(event);
+      return { content: [{ type: "text", text: "{}" }] };
     },
   };
 }
@@ -341,4 +352,19 @@ test("generated scripts are wrapped so repeated calls cannot redeclare bindings"
     assert.match(script, /^await \(async \(\) => \{/);
     assert.match(script, /\}\)\(\);$/);
   }
+});
+
+test("computer_use dismisses the Sky cursor after every action", async () => {
+  const client = recordingClient();
+  const tool = createComputerTool({ client, defineTool });
+  await tool.execute({ action: "list_apps" }, {});
+  await tool.execute({ action: "click", app: "Finder", element_index: "1" }, {});
+  assert.deepEqual(client.turnEndedCalls, ["Stop", "Stop"]);
+});
+
+test("browser dismisses the Sky cursor after every action", async () => {
+  const client = recordingClient();
+  const tool = createBrowserTool({ client, defineTool });
+  await tool.execute({ action: "list_browsers" }, {});
+  assert.deepEqual(client.turnEndedCalls, ["Stop"]);
 });
