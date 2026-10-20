@@ -43,7 +43,7 @@ var UPDATE_PAGE_PATH = "/api/dsh-codex-tools.update";
 var h = import_react.default.createElement;
 var zh = (typeof navigator !== "undefined" ? navigator.language : "en").toLowerCase().startsWith("zh");
 var text = zh ? {
-  title: "\u672C\u673A\u5DE5\u5177",
+  title: "\u7535\u8111\u64CD\u4F5C",
   heading: "\u5728\u7EBF\u66F4\u65B0",
   check: "\u68C0\u67E5\u66F4\u65B0",
   checking: "\u6B63\u5728\u68C0\u67E5\u2026",
@@ -61,7 +61,7 @@ var text = zh ? {
   updated: "\u5DF2\u66F4\u65B0\uFF0C\u5F53\u524D\u8FDB\u7A0B\u91CC\u5DF2\u7ECF\u662F\u65B0\u7248\u672C\u3002",
   back: "\u8FD4\u56DE\u5BF9\u8BDD"
 } : {
-  title: "\u672C\u673A\u5DE5\u5177",
+  title: "\u7535\u8111\u64CD\u4F5C",
   heading: "Online update",
   check: "Check for updates",
   checking: "Checking\u2026",

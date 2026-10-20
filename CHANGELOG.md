@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-10-20
+
+### Changed
+
+- The visible name is 电脑操作, in the sidebar and in the plugin list. The list description no longer mentions Codex.
+
+[2.0.4]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.4
+
 ## [2.0.3] - 2026-10-20
 
 ### Changed

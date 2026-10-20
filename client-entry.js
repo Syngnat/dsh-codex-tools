@@ -5,7 +5,7 @@ const h = React.createElement;
 const zh = (typeof navigator !== "undefined" ? navigator.language : "en").toLowerCase().startsWith("zh");
 const text = zh
   ? {
-      title: "本机工具",
+      title: "电脑操作",
       heading: "在线更新",
       check: "检查更新",
       checking: "正在检查…",
@@ -24,7 +24,7 @@ const text = zh
       back: "返回对话",
     }
   : {
-      title: "本机工具",
+      title: "电脑操作",
       heading: "Online update",
       check: "Check for updates",
       checking: "Checking…",
