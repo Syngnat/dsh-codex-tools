@@ -5,7 +5,7 @@ const PATH = "/api/dsh-codex-tools.settings";
 
 const COPY = {
   zh: {
-    tabs: ["电脑操控", "浏览器"],
+    tabs: ["电脑操控", "浏览器", "更新"],
     computerTitle: "电脑操控",
     computerSubtitle: "管理如何操作你电脑上的其他应用程序。",
     control: "控制",
@@ -98,6 +98,32 @@ const COPY = {
     risk: "风险升高",
     fullCdp: "启用完整 CDP 访问权限",
     fullCdpDesc: "关闭后，浏览器操作会停止。完整访问可以检查并控制浏览器内部功能。",
+    updateTitle: "更新",
+    updateSubtitle: "检查 GitHub 上的稳定版，确认后替换现在装的这一份。",
+    currentVersion: "当前版本",
+    latestVersion: "最新版本",
+    source: "安装来源",
+    check: "检查更新",
+    checking: "正在检查…",
+    install: "安装更新",
+    installing: "正在安装…",
+    consent: "我确认用 GitHub 上的稳定版替换当前安装",
+    upToDate: "已经是最新稳定版。",
+    hasUpdate: "有新版本可以安装。",
+    installUpdated: "已更新，当前进程里已经是新版本。",
+    installRestart: "安装完成。请完全退出并重新打开 DeepSeek Harness。",
+    installRestored: "更新失败，已恢复上一版本。",
+    installRepair: "更新失败，自动恢复也失败，请用命令行重新安装。",
+    cannotUpdate: "这里不能在线更新",
+    reasonUnsupportedSource: "现在装的不是从 GitHub 来的那一份。",
+    reasonRestartRequired: "已经装上新版本，重启后才会运行。",
+    reasonDisabled: "插件当前是禁用状态。",
+    reasonNotInstalled: "没有在插件列表里找到这个插件。",
+    reasonUnsupportedVersion: "版本号不是标准稳定版。",
+    reasonInstallationError: "这次安装本身有问题。",
+    reasonUnsupportedInstallation: "这个安装位置不支持在线替换。",
+    reasonManagerUnavailable: "插件管理服务还没准备好。",
+    checkFailed: "检查没有成功，稍后再试。",
     back: "返回对话",
     saving: "正在保存…",
     saved: "已保存",
@@ -243,7 +269,7 @@ function Page({ returnToConversation }) {
           h("input", { value: draft, placeholder: text.placeholder, onChange: (event) => { setAddHint(""); rememberDraft(event.target.value); }, onKeyDown: (event) => { if (event.key === "Enter") addAllowed(); }, style: { flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }),
           h("button", { type: "button", onClick: addAllowed, style: controlStyle }, text.add)),
         addHint ? h("div", { style: { ...descStyle, padding: "0 12px 12px", color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, addHint) : null))
-    : h("div", null,
+    : tab === 1 ? h("div", null,
       h("h1", { style: titleStyle }, text.browserTitle),
       h("p", { style: subtitleStyle }, text.browserSubtitle),
       h("div", { style: { ...cardStyle, marginBottom: 8 } }, Row({ title: text.browserCard, description: text.browserCardDesc, control: h(Switch, { checked: settings.browserUseEnabled, label: text.browserCard, onChange: (value) => patch("browserUseEnabled", value) }) })),
@@ -304,11 +330,96 @@ function Page({ returnToConversation }) {
       h("div", { style: labelStyle }, text.siteRules),
       h("p", { style: { ...descStyle, marginTop: -4 } }, text.siteRulesDesc),
       h("div", { style: labelStyle }, text.developer),
-      h("div", { style: cardStyle }, Row({ title: text.fullCdp, description: `${text.risk}。${text.fullCdpDesc}`, control: h(Switch, { checked: settings.fullCdp, label: text.fullCdp, onChange: (value) => patch("fullCdp", value) }) }))),
+      h("div", { style: cardStyle }, Row({ title: text.fullCdp, description: `${text.risk}。${text.fullCdpDesc}`, control: h(Switch, { checked: settings.fullCdp, label: text.fullCdp, onChange: (value) => patch("fullCdp", value) }) })))
+    : h(UpdatePanel, { text }),
     h("div", { style: { display: "flex", gap: 12, alignItems: "center", marginTop: 18 } },
       h("button", { type: "button", onClick: returnToConversation, style: controlStyle }, text.back),
       status ? h("span", { style: descStyle }, status) : null,
       error ? h("span", null, error) : null)));
+}
+
+const UPDATE_PATH = "/api/dsh-codex-tools.update";
+
+function reasonText(text, reason) {
+  switch (reason) {
+    case "unsupported-source": return text.reasonUnsupportedSource;
+    case "restart-required": return text.reasonRestartRequired;
+    case "disabled": return text.reasonDisabled;
+    case "not-installed": return text.reasonNotInstalled;
+    case "unsupported-version": return text.reasonUnsupportedVersion;
+    case "installation-error": return text.reasonInstallationError;
+    case "unsupported-installation": return text.reasonUnsupportedInstallation;
+    case "manager-unavailable": return text.reasonManagerUnavailable;
+    default: return reason ? String(reason) : "";
+  }
+}
+
+async function callUpdate(body) {
+  const response = await fetch(UPDATE_PATH, {
+    method: body ? "POST" : "GET",
+    credentials: "same-origin",
+    headers: body ? { "content-type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let value = null;
+  try { value = await response.json(); } catch { value = null; }
+  if (!response.ok) throw new Error(value?.error ?? "request");
+  return value;
+}
+
+function UpdatePanel({ text }) {
+  const [data, setData] = React.useState(null);
+  const [consent, setConsent] = React.useState(false);
+  const [pending, setPending] = React.useState("");
+  const [note, setNote] = React.useState("");
+  const [error, setError] = React.useState("");
+  React.useEffect(() => {
+    let live = true;
+    callUpdate().then((value) => { if (live) setData(value); }).catch(() => { if (live) setError(text.checkFailed); });
+    return () => { live = false; };
+  }, [text.checkFailed]);
+  async function check() {
+    setPending("check"); setNote(""); setError("");
+    try { setData(await callUpdate({ action: "check" })); }
+    catch { setError(text.checkFailed); }
+    finally { setPending(""); }
+  }
+  async function install() {
+    setPending("install"); setNote(""); setError("");
+    try {
+      const result = await callUpdate({ action: "install", confirm: true });
+      setNote(result?.outcome === "restart-required" ? text.installRestart
+        : result?.outcome === "restored" ? text.installRestored
+        : result?.outcome === "repair-required" ? text.installRepair
+        : text.installUpdated);
+      setConsent(false);
+      try { setData(await callUpdate()); } catch { /* keep the previous view */ }
+    } catch (failure) {
+      const code = String(failure?.message ?? "");
+      setError(code === "repair-required" ? text.installRepair : `${text.cannotUpdate}${code ? `（${code}）` : ""}`);
+    } finally { setPending(""); }
+  }
+  const running = typeof data?.currentVersion === "string" ? data.currentVersion : null;
+  const latest = typeof data?.latestVersion === "string" ? data.latestVersion : null;
+  const canInstall = data?.status === "update-available" && data?.available === true;
+  return h("div", null,
+    h("h1", { style: titleStyle }, text.updateTitle),
+    h("p", { style: subtitleStyle }, text.updateSubtitle),
+    h("div", { style: cardStyle },
+      Row({ title: text.currentVersion, description: running ?? "…", control: null }),
+      h("div", { style: hairline }),
+      Row({ title: text.latestVersion, description: latest ?? text.check, control: null }),
+      data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null),
+    data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
+    data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
+    data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}：${reasonText(text, data.reason)}`) : null,
+    canInstall ? h("label", { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13 } },
+      h("input", { type: "checkbox", checked: consent, onChange: (event) => setConsent(event.target.checked) }), text.consent) : null,
+    h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },
+      h("button", { type: "button", onClick: check, disabled: pending !== "", style: controlStyle }, pending === "check" ? text.checking : text.check),
+      canInstall ? h("button", { type: "button", onClick: install, disabled: !consent || pending !== "", style: controlStyle }, pending === "install" ? text.installing : text.install) : null),
+    note ? h("p", { style: { ...descStyle, marginTop: 12 } }, note) : null,
+    error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null);
 }
 
 export const inject = ["slots", "layout", "locale"];

@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.10] - 2026-10-21
+
+### Added
+
+- The settings page has a third tab, 更新. It checks GitHub for the latest stable release, shows the running and latest version, and installs after an explicit confirmation, the same flow as the prompt-assist plugin.
+
+[2.0.10]: https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.10
+
 ## [2.0.9] - 2026-10-20
 
 ### Fixed
