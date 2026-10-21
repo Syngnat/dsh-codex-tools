@@ -4,6 +4,13 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.11] - 2026-10-21
+
+### Fixed
+
+- 批注截图, 网页 URL 和链接打开位置, and 本地 URL 打开位置 were saved but never read. They now change what the browser does: screenshots carry the last click or drag, and a URL can open in this window or in the system browser.
+- 默认使用网站工具 was a switch with nothing behind it. It is now shown as unavailable, and the per-extension 启用 and 停用 buttons are gone because Chrome cannot disable one extension from here.
+
 ## [2.0.10] - 2026-10-21
 
 ### Added
