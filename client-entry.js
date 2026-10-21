@@ -116,6 +116,7 @@ const COPY = {
     targetCommit: "目标提交",
     releaseNotes: "更新说明",
     notChecked: "还没有检查过",
+    lastCheck: "上次检查",
     replacing: "插件正在替换中…",
     phaseLabels: {
       queued: "排队中",
@@ -465,6 +466,8 @@ function UpdatePanel({ text }) {
       Row({ title: text.installedVersion, description: installed ?? "…", control: null }),
       h("div", { style: hairline }),
       Row({ title: text.latestVersion, description: latest ?? text.notChecked, control: null }),
+      h("div", { style: hairline }),
+      Row({ title: text.lastCheck, description: data?.release?.checkedAt ? new Date(data.release.checkedAt).toLocaleString() : text.notChecked, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null),
     restartPending
       ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "新版本"))

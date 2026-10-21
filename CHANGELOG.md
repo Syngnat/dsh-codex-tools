@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.21] - 2026-10-21
+
+### Added
+
+- The update page shows when the last check ran.
+
 ## [2.0.20] - 2026-10-21
 
 ### Fixed
