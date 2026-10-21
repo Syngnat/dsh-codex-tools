@@ -149,6 +149,7 @@ var COPY = {
     installStart: "\u5F00\u59CB\u5B89\u88C5",
     targetCommit: "\u76EE\u6807\u63D0\u4EA4",
     releaseNotes: "\u66F4\u65B0\u8BF4\u660E",
+    swapHint: "\u5B89\u88C5\u65F6\u63D2\u4EF6\u4F1A\u5148\u5378\u8F7D\u81EA\u5DF1\u518D\u88C5\u56DE\u6765\uFF0C\u9875\u9762\u53EF\u80FD\u77ED\u6682\u6D88\u5931\uFF1B\u56DE\u6765\u540E\u8FD9\u91CC\u4F1A\u663E\u793A\u7ED3\u679C\u3002",
     notChecked: "\u8FD8\u6CA1\u6709\u68C0\u67E5\u8FC7",
     lastCheck: "\u4E0A\u6B21\u68C0\u67E5",
     replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
@@ -618,6 +619,7 @@ function UpdatePanel({ text }) {
       h("input", { type: "checkbox", checked: consent, onChange: (event) => setConsent(event.target.checked) }),
       text.consent
     ) : null,
+    canInstall ? h("p", { style: { ...descStyle, marginTop: 8 } }, text.swapHint) : null,
     h(
       "div",
       { style: { display: "flex", gap: 8, marginTop: 14 } },
