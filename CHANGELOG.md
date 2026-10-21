@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.14] - 2026-10-21
+
+### Fixed
+
+- The owned Chrome no longer touches the login keychain. macOS showed a "Could not find keychain" alert on every start of the tool's window, and a second one about the keychain it wanted to store Chrome in. The window now runs with `--use-mock-keychain` and `--password-store=basic`, so it keeps its secrets in memory and never asks the keychain. The restore bubble after a killed window is off as well.
+
 ## [2.0.13] - 2026-10-21
 
 ### Fixed
