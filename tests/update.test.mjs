@@ -315,6 +315,18 @@ test("eligibility names the reason an install is refused", async () => {
   assert.equal((await ok.eligibility()).reason, null);
 });
 
+test("a newer copy on disk is reported as installed, not as an update to install", async () => {
+  const service = new UpdateService({
+    currentVersion: "2.0.13",
+    manager: managerStub({ rows: [bundleRow({ version: "2.0.14" })] }),
+  });
+  const status = await service.statusWithEligibility();
+  assert.equal(status.reason, "restart-required");
+  assert.equal(status.available, false);
+  assert.equal(status.installedVersion, "2.0.14");
+  assert.equal(status.currentVersion, "2.0.13");
+});
+
 test("eligibility reports a missing manager", async () => {
   const service = new UpdateService({ currentVersion: "1.0.0", manager: undefined });
   assert.equal((await service.eligibility()).reason, "manager-unavailable");

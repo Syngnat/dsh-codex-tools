@@ -100,7 +100,8 @@ const COPY = {
     fullCdpDesc: "关闭后，浏览器操作会停止。完整访问可以检查并控制浏览器内部功能。",
     updateTitle: "更新",
     updateSubtitle: "检查 GitHub 上的稳定版，确认后替换现在装的这一份。",
-    currentVersion: "当前版本",
+    currentVersion: "当前运行版本",
+    installedVersion: "已安装版本",
     latestVersion: "最新版本",
     source: "安装来源",
     check: "检查更新",
@@ -117,6 +118,7 @@ const COPY = {
     cannotUpdate: "这里不能在线更新",
     reasonUnsupportedSource: "现在装的不是从 GitHub 来的那一份。",
     reasonRestartRequired: "已经装上新版本，重启后才会运行。",
+    restartPending: "已经装好 {version}。完全退出并重新打开 DeepSeek Harness 后生效，关掉窗口不算。",
     reasonDisabled: "插件当前是禁用状态。",
     reasonNotInstalled: "没有在插件列表里找到这个插件。",
     reasonUnsupportedVersion: "版本号不是标准稳定版。",
@@ -397,18 +399,25 @@ function UpdatePanel({ text }) {
   }
   const running = typeof data?.currentVersion === "string" ? data.currentVersion : null;
   const latest = typeof data?.latestVersion === "string" ? data.latestVersion : null;
+  const installed = typeof data?.installedVersion === "string" ? data.installedVersion : null;
   const canInstall = data?.status === "update-available" && data?.available === true;
+  // A newer copy on disk than the one this process loaded only needs a restart.
+  const restartPending = data?.reason === "restart-required";
   return h("div", null,
     h("h1", { style: titleStyle }, text.updateTitle),
     h("p", { style: subtitleStyle }, text.updateSubtitle),
     h("div", { style: cardStyle },
       Row({ title: text.currentVersion, description: running ?? "…", control: null }),
       h("div", { style: hairline }),
+      Row({ title: text.installedVersion, description: installed ?? "…", control: null }),
+      h("div", { style: hairline }),
       Row({ title: text.latestVersion, description: latest ?? text.check, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null),
-    data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
-    data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
-    data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}：${reasonText(text, data.reason)}`) : null,
+    restartPending
+      ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "新版本"))
+      : data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
+    !restartPending && data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
+    !restartPending && data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}：${reasonText(text, data.reason)}`) : null,
     canInstall ? h("label", { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13 } },
       h("input", { type: "checkbox", checked: consent, onChange: (event) => setConsent(event.target.checked) }), text.consent) : null,
     h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },

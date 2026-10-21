@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.15] - 2026-10-21
+
+### Fixed
+
+- The update page no longer says both "a new version can be installed" and "online update is not possible here" at the same time. When the copy on disk is newer than the one this process loaded, it now says the new version is already installed and only needs a restart, and it shows the installed version next to the running one.
+
 ## [2.0.14] - 2026-10-21
 
 ### Fixed

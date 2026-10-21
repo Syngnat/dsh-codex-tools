@@ -134,7 +134,8 @@ var COPY = {
     fullCdpDesc: "\u5173\u95ED\u540E\uFF0C\u6D4F\u89C8\u5668\u64CD\u4F5C\u4F1A\u505C\u6B62\u3002\u5B8C\u6574\u8BBF\u95EE\u53EF\u4EE5\u68C0\u67E5\u5E76\u63A7\u5236\u6D4F\u89C8\u5668\u5185\u90E8\u529F\u80FD\u3002",
     updateTitle: "\u66F4\u65B0",
     updateSubtitle: "\u68C0\u67E5 GitHub \u4E0A\u7684\u7A33\u5B9A\u7248\uFF0C\u786E\u8BA4\u540E\u66FF\u6362\u73B0\u5728\u88C5\u7684\u8FD9\u4E00\u4EFD\u3002",
-    currentVersion: "\u5F53\u524D\u7248\u672C",
+    currentVersion: "\u5F53\u524D\u8FD0\u884C\u7248\u672C",
+    installedVersion: "\u5DF2\u5B89\u88C5\u7248\u672C",
     latestVersion: "\u6700\u65B0\u7248\u672C",
     source: "\u5B89\u88C5\u6765\u6E90",
     check: "\u68C0\u67E5\u66F4\u65B0",
@@ -151,6 +152,7 @@ var COPY = {
     cannotUpdate: "\u8FD9\u91CC\u4E0D\u80FD\u5728\u7EBF\u66F4\u65B0",
     reasonUnsupportedSource: "\u73B0\u5728\u88C5\u7684\u4E0D\u662F\u4ECE GitHub \u6765\u7684\u90A3\u4E00\u4EFD\u3002",
     reasonRestartRequired: "\u5DF2\u7ECF\u88C5\u4E0A\u65B0\u7248\u672C\uFF0C\u91CD\u542F\u540E\u624D\u4F1A\u8FD0\u884C\u3002",
+    restartPending: "\u5DF2\u7ECF\u88C5\u597D {version}\u3002\u5B8C\u5168\u9000\u51FA\u5E76\u91CD\u65B0\u6253\u5F00 DeepSeek Harness \u540E\u751F\u6548\uFF0C\u5173\u6389\u7A97\u53E3\u4E0D\u7B97\u3002",
     reasonDisabled: "\u63D2\u4EF6\u5F53\u524D\u662F\u7981\u7528\u72B6\u6001\u3002",
     reasonNotInstalled: "\u6CA1\u6709\u5728\u63D2\u4EF6\u5217\u8868\u91CC\u627E\u5230\u8FD9\u4E2A\u63D2\u4EF6\u3002",
     reasonUnsupportedVersion: "\u7248\u672C\u53F7\u4E0D\u662F\u6807\u51C6\u7A33\u5B9A\u7248\u3002",
@@ -535,7 +537,9 @@ function UpdatePanel({ text }) {
   }
   const running = typeof data?.currentVersion === "string" ? data.currentVersion : null;
   const latest = typeof data?.latestVersion === "string" ? data.latestVersion : null;
+  const installed = typeof data?.installedVersion === "string" ? data.installedVersion : null;
   const canInstall = data?.status === "update-available" && data?.available === true;
+  const restartPending = data?.reason === "restart-required";
   return h(
     "div",
     null,
@@ -546,12 +550,14 @@ function UpdatePanel({ text }) {
       { style: cardStyle },
       Row({ title: text.currentVersion, description: running ?? "\u2026", control: null }),
       h("div", { style: hairline }),
+      Row({ title: text.installedVersion, description: installed ?? "\u2026", control: null }),
+      h("div", { style: hairline }),
       Row({ title: text.latestVersion, description: latest ?? text.check, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null
     ),
-    data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
-    data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
-    data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}\uFF1A${reasonText(text, data.reason)}`) : null,
+    restartPending ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "\u65B0\u7248\u672C")) : data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
+    !restartPending && data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
+    !restartPending && data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}\uFF1A${reasonText(text, data.reason)}`) : null,
     canInstall ? h(
       "label",
       { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13 } },
