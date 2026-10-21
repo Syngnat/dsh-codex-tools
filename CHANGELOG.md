@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.12] - 2026-10-21
+
+### Fixed
+
+- 扩展的停用和启用现在是真的：目录在 `Default/Extensions` 与 `Default/Extensions-disabled` 之间移动，Chrome 下次启动就按新的加载。列表同时显示两种状态。
+
+### Removed
+
+- 未打包扩展目录的输入框。Chrome 155 已不接受 `--load-extension`，这个框加进去的扩展从来不会加载。
+- 默认使用网站工具的开关。Chrome 155 没有 `navigator.modelContext`，CDP 的 WebMCP 域能启用但不会注入页面接口，这一项没有可以生效的行为。
+
 ## [2.0.11] - 2026-10-21
 
 ### Fixed

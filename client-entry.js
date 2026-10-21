@@ -67,8 +67,9 @@ const COPY = {
     extensionManager: "扩展程序管理器",
     extensionDesc: "关闭后，下次打开窗口不加载任何扩展。未打包的目录会在下次启动时加载。",
     extensionEmpty: "这两个窗口里还没有已安装的扩展。",
-    extensionPath: "未打包扩展的目录",
-    extensionUnavailable: "单个扩展不能在这里停用",
+    extensionStop: "停用",
+    extensionStart: "启用",
+    extensionHint: "停用会把扩展目录移出加载路径，下次打开窗口才生效。",
     downloads: "下载",
     downloadLocation: "位置",
     downloadLocationDesc: "关闭「下载前询问」时，文件保存到这里。留空则用系统下载目录。下次打开窗口时生效。",
@@ -90,7 +91,7 @@ const COPY = {
     ask: "每次询问",
     deny: "拒绝",
     siteTools: "默认使用网站工具",
-    siteToolsUnavailable: "网页声明的工具还没有接入，这一项现在不起作用。",
+    siteToolsUnavailable: "当前 Chrome 还没有网页工具接口，这一项无法开启。",
     siteRules: "网站权限",
     siteRulesDesc: "默认权限。单独例外还没有按网站生效。",
     developer: "开发者模式",
@@ -207,7 +208,6 @@ function Page({ returnToConversation }) {
   }
   const [login, setLogin] = React.useState({ origin: "", username: "", password: "" });
   const [contactDraft, setContactDraft] = React.useState({ name: "", email: "", phone: "", address: "" });
-  const [extensionPath, setExtensionPath] = React.useState("");
   const [downloadDir, setDownloadDir] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [error, setError] = React.useState("");
@@ -303,10 +303,10 @@ function Page({ returnToConversation }) {
       h("div", { style: labelStyle }, text.extensions),
       h("div", { style: cardStyle },
         Row({ title: text.extensionManager, description: text.extensionDesc, control: h(Switch, { checked: settings.extensionsEnabled !== false, label: text.extensionManager, onChange: (value) => patch("extensionsEnabled", value) }) }),
-        (settings.extensions ?? []).length === 0 ? h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionEmpty) : (settings.extensions ?? []).map((item) => h("div", { key: item.profile + item.id, style: rowStyle }, h("div", { style: { flex: 1 } }, `${item.name} · ${item.profile}`), h("span", { style: descStyle }, text.extensionUnavailable))),
-        h("div", { style: { display: "flex", gap: 8, padding: 12 } },
-          h("input", { value: extensionPath, placeholder: text.extensionPath, onChange: (event) => setExtensionPath(event.target.value), style: { flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }),
-          h("button", { type: "button", onClick: () => { if (!extensionPath.trim()) return; patch("extraExtensionPaths", [...(settings.extraExtensionPaths ?? []), extensionPath.trim()]); setExtensionPath(""); }, style: controlStyle }, text.add))),
+        (settings.extensions ?? []).length === 0 ? h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionEmpty) : (settings.extensions ?? []).map((item) => h("div", { key: item.profile + item.id, style: rowStyle },
+          h("div", { style: { flex: 1 } }, `${item.name} · ${item.profile}`),
+          h("button", { type: "button", onClick: () => commit({ action: "set-extension", profile: item.profile, id: item.id, enabled: !item.enabled }), style: controlStyle }, item.enabled ? text.extensionStop : text.extensionStart))),
+        h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionHint)),
       h("div", { style: labelStyle }, text.downloads),
       h("div", { style: cardStyle },
         Row({ title: text.downloadLocation, description: text.downloadLocationDesc, control: h("input", { value: downloadDir, placeholder: text.downloadLocation, onChange: (event) => setDownloadDir(event.target.value), onBlur: () => patch("downloadDirectory", downloadDir), style: { width: 220, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }) }),
@@ -322,7 +322,7 @@ function Page({ returnToConversation }) {
         h("div", { style: hairline }),
         Row({ title: text.historyAccess, description: text.historyAccessDesc, control: h(Select, { value: settings.historyAccess, label: text.historyAccess, options: accessOptions, onChange: (value) => patch("historyAccess", value) }) }),
         h("div", { style: hairline }),
-        Row({ title: text.siteTools, description: text.siteToolsUnavailable, control: h("span", { style: descStyle }, text.unavailable) })),
+        Row({ title: text.siteTools, description: text.siteToolsUnavailable, control: null })),
       h("div", { style: labelStyle }, text.siteRules),
       h("p", { style: { ...descStyle, marginTop: -4 } }, text.siteRulesDesc),
       h("div", { style: labelStyle }, text.developer),

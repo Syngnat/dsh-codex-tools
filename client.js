@@ -101,8 +101,9 @@ var COPY = {
     extensionManager: "\u6269\u5C55\u7A0B\u5E8F\u7BA1\u7406\u5668",
     extensionDesc: "\u5173\u95ED\u540E\uFF0C\u4E0B\u6B21\u6253\u5F00\u7A97\u53E3\u4E0D\u52A0\u8F7D\u4EFB\u4F55\u6269\u5C55\u3002\u672A\u6253\u5305\u7684\u76EE\u5F55\u4F1A\u5728\u4E0B\u6B21\u542F\u52A8\u65F6\u52A0\u8F7D\u3002",
     extensionEmpty: "\u8FD9\u4E24\u4E2A\u7A97\u53E3\u91CC\u8FD8\u6CA1\u6709\u5DF2\u5B89\u88C5\u7684\u6269\u5C55\u3002",
-    extensionPath: "\u672A\u6253\u5305\u6269\u5C55\u7684\u76EE\u5F55",
-    extensionUnavailable: "\u5355\u4E2A\u6269\u5C55\u4E0D\u80FD\u5728\u8FD9\u91CC\u505C\u7528",
+    extensionStop: "\u505C\u7528",
+    extensionStart: "\u542F\u7528",
+    extensionHint: "\u505C\u7528\u4F1A\u628A\u6269\u5C55\u76EE\u5F55\u79FB\u51FA\u52A0\u8F7D\u8DEF\u5F84\uFF0C\u4E0B\u6B21\u6253\u5F00\u7A97\u53E3\u624D\u751F\u6548\u3002",
     downloads: "\u4E0B\u8F7D",
     downloadLocation: "\u4F4D\u7F6E",
     downloadLocationDesc: "\u5173\u95ED\u300C\u4E0B\u8F7D\u524D\u8BE2\u95EE\u300D\u65F6\uFF0C\u6587\u4EF6\u4FDD\u5B58\u5230\u8FD9\u91CC\u3002\u7559\u7A7A\u5219\u7528\u7CFB\u7EDF\u4E0B\u8F7D\u76EE\u5F55\u3002\u4E0B\u6B21\u6253\u5F00\u7A97\u53E3\u65F6\u751F\u6548\u3002",
@@ -124,7 +125,7 @@ var COPY = {
     ask: "\u6BCF\u6B21\u8BE2\u95EE",
     deny: "\u62D2\u7EDD",
     siteTools: "\u9ED8\u8BA4\u4F7F\u7528\u7F51\u7AD9\u5DE5\u5177",
-    siteToolsUnavailable: "\u7F51\u9875\u58F0\u660E\u7684\u5DE5\u5177\u8FD8\u6CA1\u6709\u63A5\u5165\uFF0C\u8FD9\u4E00\u9879\u73B0\u5728\u4E0D\u8D77\u4F5C\u7528\u3002",
+    siteToolsUnavailable: "\u5F53\u524D Chrome \u8FD8\u6CA1\u6709\u7F51\u9875\u5DE5\u5177\u63A5\u53E3\uFF0C\u8FD9\u4E00\u9879\u65E0\u6CD5\u5F00\u542F\u3002",
     siteRules: "\u7F51\u7AD9\u6743\u9650",
     siteRulesDesc: "\u9ED8\u8BA4\u6743\u9650\u3002\u5355\u72EC\u4F8B\u5916\u8FD8\u6CA1\u6709\u6309\u7F51\u7AD9\u751F\u6548\u3002",
     developer: "\u5F00\u53D1\u8005\u6A21\u5F0F",
@@ -246,7 +247,6 @@ function Page({ returnToConversation }) {
   }
   const [login, setLogin] = import_react.default.useState({ origin: "", username: "", password: "" });
   const [contactDraft, setContactDraft] = import_react.default.useState({ name: "", email: "", phone: "", address: "" });
-  const [extensionPath, setExtensionPath] = import_react.default.useState("");
   const [downloadDir, setDownloadDir] = import_react.default.useState("");
   const [status, setStatus] = import_react.default.useState("");
   const [error, setError] = import_react.default.useState("");
@@ -402,17 +402,13 @@ function Page({ returnToConversation }) {
         "div",
         { style: cardStyle },
         Row({ title: text.extensionManager, description: text.extensionDesc, control: h(Switch, { checked: settings.extensionsEnabled !== false, label: text.extensionManager, onChange: (value) => patch("extensionsEnabled", value) }) }),
-        (settings.extensions ?? []).length === 0 ? h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionEmpty) : (settings.extensions ?? []).map((item) => h("div", { key: item.profile + item.id, style: rowStyle }, h("div", { style: { flex: 1 } }, `${item.name} \xB7 ${item.profile}`), h("span", { style: descStyle }, text.extensionUnavailable))),
-        h(
+        (settings.extensions ?? []).length === 0 ? h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionEmpty) : (settings.extensions ?? []).map((item) => h(
           "div",
-          { style: { display: "flex", gap: 8, padding: 12 } },
-          h("input", { value: extensionPath, placeholder: text.extensionPath, onChange: (event) => setExtensionPath(event.target.value), style: { flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2, #e4e4e4)", background: "transparent", color: "inherit", padding: "0 10px" } }),
-          h("button", { type: "button", onClick: () => {
-            if (!extensionPath.trim()) return;
-            patch("extraExtensionPaths", [...settings.extraExtensionPaths ?? [], extensionPath.trim()]);
-            setExtensionPath("");
-          }, style: controlStyle }, text.add)
-        )
+          { key: item.profile + item.id, style: rowStyle },
+          h("div", { style: { flex: 1 } }, `${item.name} \xB7 ${item.profile}`),
+          h("button", { type: "button", onClick: () => commit({ action: "set-extension", profile: item.profile, id: item.id, enabled: !item.enabled }), style: controlStyle }, item.enabled ? text.extensionStop : text.extensionStart)
+        )),
+        h("div", { style: { ...descStyle, padding: "0 16px 12px" } }, text.extensionHint)
       ),
       h("div", { style: labelStyle }, text.downloads),
       h(
@@ -434,7 +430,7 @@ function Page({ returnToConversation }) {
         h("div", { style: hairline }),
         Row({ title: text.historyAccess, description: text.historyAccessDesc, control: h(Select, { value: settings.historyAccess, label: text.historyAccess, options: accessOptions, onChange: (value) => patch("historyAccess", value) }) }),
         h("div", { style: hairline }),
-        Row({ title: text.siteTools, description: text.siteToolsUnavailable, control: h("span", { style: descStyle }, text.unavailable) })
+        Row({ title: text.siteTools, description: text.siteToolsUnavailable, control: null })
       ),
       h("div", { style: labelStyle }, text.siteRules),
       h("p", { style: { ...descStyle, marginTop: -4 } }, text.siteRulesDesc),

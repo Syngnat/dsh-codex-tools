@@ -8,10 +8,15 @@ import {
 } from "../lib/settings-store.mjs";
 import {
   extensionLaunchFlags,
+  extensionsInProfile,
   openTargetFor,
   presentUrl,
   resolveDownloadDirectory,
+  setExtensionEnabled,
 } from "../lib/owned-data.mjs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const base = normalizeSettings(null);
 
@@ -68,3 +73,25 @@ test("annotation screenshots and URL targets survive a save round-trip", () => {
   assert.equal(saved.localUrlTarget, "system");
   assert.equal(normalizeSettings({ annotationScreenshots: "nope" }).annotationScreenshots, "always");
 });
+
+test("a stop button really moves the extension out of the load path", () => {
+  const profile = mkdtempSync(join(tmpdir(), "dsh-ext-"));
+  const id = "abcdefghijklmnopabcdefghijklmnop";
+  const dir = join(profile, "Default", "Extensions", id, "1.0");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "manifest.json"), JSON.stringify({ name: "Probe", version: "1.0" }));
+
+  const before = extensionsInProfile(profile);
+  assert.equal(before.length, 1);
+  assert.equal(before[0].enabled, true);
+
+  assert.deepEqual(setExtensionEnabled(profile, id, false), { enabled: false });
+  const stopped = extensionsInProfile(profile);
+  assert.equal(stopped.length, 1);
+  assert.equal(stopped[0].enabled, false);
+
+  assert.deepEqual(setExtensionEnabled(profile, id, true), { enabled: true });
+  assert.equal(extensionsInProfile(profile)[0].enabled, true);
+  assert.throws(() => setExtensionEnabled(profile, "../escape", false), /not valid/u);
+});
+
