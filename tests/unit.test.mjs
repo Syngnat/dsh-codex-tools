@@ -7,6 +7,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
 import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
@@ -516,3 +517,13 @@ test("extension flags, visible URLs, and saved logins stay out of the summary", 
   }
 });
 
+
+test("the settings page leaves the sidebar and opens from the plugin's own page", () => {
+  const source = readFileSync(new URL("../client-entry.js", import.meta.url), "utf8");
+  // The sidebar keeps one row for the app; the settings open from the plugin's
+  // own page in the Plugins page.
+  assert.doesNotMatch(source, /sidebar\.panellist/);
+  assert.match(source, /plugins\.detail\.actions/);
+  assert.match(source, /name: "main",\s*\n\s*key: "dsh-codex-tools"/);
+  assert.match(source, /selectPanel\("dsh-codex-tools"\)/);
+});

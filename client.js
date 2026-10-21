@@ -166,6 +166,7 @@ var COPY = {
     releaseNotes: "\u66F4\u65B0\u8BF4\u660E",
     swapHint: "\u5B89\u88C5\u65F6\u63D2\u4EF6\u4F1A\u5148\u5378\u8F7D\u81EA\u5DF1\u518D\u88C5\u56DE\u6765\uFF0C\u9875\u9762\u53EF\u80FD\u77ED\u6682\u6D88\u5931\uFF1B\u56DE\u6765\u540E\u8FD9\u91CC\u4F1A\u663E\u793A\u7ED3\u679C\u3002",
     notChecked: "\u8FD8\u6CA1\u6709\u68C0\u67E5\u8FC7",
+    openSettings: "\u6253\u5F00\u8BBE\u7F6E",
     lastCheck: "\u4E0A\u6B21\u68C0\u67E5",
     replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
     phaseLabels: {
@@ -220,14 +221,6 @@ async function request(body) {
   if (!response.ok) throw new Error("request");
   return response.json();
 }
-function Icon() {
-  return h(
-    "svg",
-    { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.7, "aria-hidden": true },
-    h("rect", { x: 3, y: 4, width: 18, height: 12, rx: 2 }),
-    h("path", { d: "M8 20h8M12 16v4" })
-  );
-}
 var pageStyle = { boxSizing: "border-box", width: "100%", height: "100%", maxHeight: "100vh", overflowY: "auto", overflowX: "hidden", color: "var(--dsw-alias-label-primary, #1a1a1a)" };
 var frameStyle = { boxSizing: "border-box", maxWidth: 760, padding: "28px 32px 48px" };
 var titleStyle = { margin: "0 0 6px", fontSize: 28, fontWeight: 650 };
@@ -239,6 +232,17 @@ var nameStyle = { fontSize: 15, fontWeight: 600 };
 var descStyle = { marginTop: 3, fontSize: 13, lineHeight: 1.4, color: "var(--dsw-alias-label-secondary, #5c6570)" };
 var hairline = { height: 1, background: "var(--dsw-alias-border-l2, #e4e4e4)" };
 var controlStyle = { height: 30, padding: "0 12px", borderRadius: 8, border: 0, background: "var(--dsw-alias-interactive-bg-hover, #f2f3f5)", color: "inherit", cursor: "pointer" };
+var actionStyle = {
+  height: 28,
+  padding: "0 12px",
+  borderRadius: 8,
+  border: "1px solid var(--dsw-alias-border-l2, #d5d8dd)",
+  background: "var(--dsw-alias-bg-layer-1, #ffffff)",
+  color: "var(--dsw-alias-label-primary, #1a1a1a)",
+  font: "inherit",
+  fontSize: 13,
+  cursor: "pointer"
+};
 function Switch({ checked, label, disabled, onChange }) {
   return h("button", {
     type: "button",
@@ -652,14 +656,28 @@ function UpdatePanel({ text }) {
   );
 }
 var inject = ["slots", "layout", "locale"];
+var PACKAGE_NAME = "@local/dsh-codex-tools";
+var ROW_ID = "local-codex-tools";
+function isOwnPage(subject) {
+  if (subject?.kind === "bundle") return subject.pkg?.name === PACKAGE_NAME;
+  if (subject?.kind === "row") return subject.row?.rowId === ROW_ID;
+  return false;
+}
 function apply(ctx) {
   const label = () => "\u7535\u8111\u64CD\u63A7";
-  ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({
-    name: "sidebar.panellist",
-    id: "dsh-codex-tools",
-    order: 46,
+  ctx.slots.inject("plugins.detail.actions", () => ctx.slots.register({
+    name: "plugins.detail.actions",
+    id: "dsh-codex-tools-open",
+    order: 100,
     label
-  }, Icon));
+  }, ({ subject }) => {
+    if (!isOwnPage(subject)) return null;
+    return h("button", {
+      type: "button",
+      style: actionStyle,
+      onClick: () => ctx.layout.selectPanel("dsh-codex-tools")
+    }, COPY.zh.openSettings);
+  }));
   ctx.slots.inject("main", () => ctx.slots.register({
     name: "main",
     key: "dsh-codex-tools",

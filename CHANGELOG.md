@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.26] - 2026-10-21
+
+### Changed
+
+- 电脑操控 no longer takes a row in the sidebar. The settings open from the plugin's own page in the 插件 page, so the sidebar keeps one row for the app instead of one row per plugin.
+
 ## [2.0.25] - 2026-10-21
 
 ### Changed
