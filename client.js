@@ -35,6 +35,21 @@ __export(client_entry_exports, {
 });
 module.exports = __toCommonJS(client_entry_exports);
 var import_react = __toESM(require("react"), 1);
+
+// lib/format-time.mjs
+var OFFSET_MS = 8 * 60 * 60 * 1e3;
+var pad = (value) => String(value).padStart(2, "0");
+function formatTimestamp(value) {
+  const date = value instanceof Date ? value : new Date(value ?? Number.NaN);
+  const time = date.getTime();
+  if (!Number.isFinite(time)) return "";
+  const shifted = new Date(time + OFFSET_MS);
+  const day = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+  const clock = `${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}`;
+  return `${day} ${clock} UTC+8`;
+}
+
+// client-entry.js
 var h = import_react.default.createElement;
 var PATH = "/api/dsh-codex-tools.settings";
 var COPY = {
@@ -607,7 +622,7 @@ function UpdatePanel({ text }) {
       h("div", { style: hairline }),
       Row({ title: text.latestVersion, description: latest ?? text.notChecked, control: null }),
       h("div", { style: hairline }),
-      Row({ title: text.lastCheck, description: data?.release?.checkedAt ? new Date(data.release.checkedAt).toLocaleString() : text.notChecked, control: null }),
+      Row({ title: text.lastCheck, description: formatTimestamp(data?.release?.checkedAt) || text.notChecked, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null
     ),
     restartPending ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "\u65B0\u7248\u672C")) : data?.release?.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,

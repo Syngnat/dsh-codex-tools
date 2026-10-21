@@ -1,5 +1,7 @@
 import React from "react";
 
+import { formatTimestamp } from "./lib/format-time.mjs";
+
 const h = React.createElement;
 const PATH = "/api/dsh-codex-tools.settings";
 
@@ -471,7 +473,7 @@ function UpdatePanel({ text }) {
       h("div", { style: hairline }),
       Row({ title: text.latestVersion, description: latest ?? text.notChecked, control: null }),
       h("div", { style: hairline }),
-      Row({ title: text.lastCheck, description: data?.release?.checkedAt ? new Date(data.release.checkedAt).toLocaleString() : text.notChecked, control: null }),
+      Row({ title: text.lastCheck, description: formatTimestamp(data?.release?.checkedAt) || text.notChecked, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null),
     restartPending
       ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "新版本"))
