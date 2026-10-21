@@ -93,21 +93,19 @@ export function apply(ctx, config = {}) {
       : undefined;
 
   // One online update service per mount, shared by the tool and the page.
+  // It is built on first use: the plugin manager and the job service may mount
+  // after this plugin does, and a service that is not there yet must not stop
+  // the route from answering.
   let online = null;
   const getOnline = () => {
     if (online === null) {
-      const manager = getService("pluginManager");
-      const jobs = getService("jobs");
-      if (!manager || !jobs) {
-        throw new Error("codex-tools: this deployment mounts no plugin manager and jobs service");
-      }
       const version = readOwnVersion();
       if (version === null) throw new Error("codex-tools: cannot read the plugin's own version from package.json");
       online = new OnlineUpdateService({
-        manager,
-        jobs,
+        manager: getService("pluginManager"),
+        jobs: getService("jobs"),
         currentVersion: version,
-        updates: createService(manager),
+        updates: createService(getService("pluginManager")),
         hasHmr: Boolean(getService("hmr")),
         readLoadedVersion,
       });

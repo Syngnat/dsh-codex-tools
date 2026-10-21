@@ -148,6 +148,7 @@ var COPY = {
     installUpdated: "\u5DF2\u66F4\u65B0\uFF0C\u5F53\u524D\u8FDB\u7A0B\u91CC\u5DF2\u7ECF\u662F\u65B0\u7248\u672C\u3002",
     installStart: "\u5F00\u59CB\u5B89\u88C5",
     targetCommit: "\u76EE\u6807\u63D0\u4EA4",
+    releaseNotes: "\u66F4\u65B0\u8BF4\u660E",
     replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
     phaseLabels: {
       queued: "\u6392\u961F\u4E2D",
@@ -178,6 +179,7 @@ var COPY = {
     reasonInstallationError: "\u8FD9\u6B21\u5B89\u88C5\u672C\u8EAB\u6709\u95EE\u9898\u3002",
     reasonUnsupportedInstallation: "\u8FD9\u4E2A\u5B89\u88C5\u4F4D\u7F6E\u4E0D\u652F\u6301\u5728\u7EBF\u66FF\u6362\u3002",
     reasonManagerUnavailable: "\u63D2\u4EF6\u7BA1\u7406\u670D\u52A1\u8FD8\u6CA1\u51C6\u5907\u597D\u3002",
+    reasonServiceUnavailable: "\u63D2\u4EF6\u7BA1\u7406\u670D\u52A1\u8FD8\u6CA1\u51C6\u5907\u597D\uFF0C\u7A0D\u540E\u518D\u8BD5\u3002",
     checkFailed: "\u68C0\u67E5\u6CA1\u6709\u6210\u529F\uFF0C\u7A0D\u540E\u518D\u8BD5\u3002",
     back: "\u8FD4\u56DE\u5BF9\u8BDD",
     saving: "\u6B63\u5728\u4FDD\u5B58\u2026",
@@ -486,6 +488,8 @@ function reasonText(text, reason) {
       return text.reasonUnsupportedInstallation;
     case "manager-unavailable":
       return text.reasonManagerUnavailable;
+    case "service-unavailable":
+      return text.reasonServiceUnavailable;
     default:
       return reason ? String(reason) : "";
   }
@@ -616,6 +620,11 @@ function UpdatePanel({ text }) {
       canInstall ? h("button", { type: "button", onClick: install, disabled: !consent || pending !== "", style: controlStyle }, pending === "install" ? text.installing : text.install) : null
     ),
     data?.operation?.targetSpec ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.targetCommit} ${data.operation.targetSpec}`) : null,
+    data?.release?.releaseUrl ? h(
+      "p",
+      { style: { ...descStyle, marginTop: 12 } },
+      h("a", { href: data.release.releaseUrl, target: "_blank", rel: "noreferrer" }, text.releaseNotes)
+    ) : null,
     note ? h("p", { style: { ...descStyle, marginTop: 12 } }, note) : null,
     error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null
   );

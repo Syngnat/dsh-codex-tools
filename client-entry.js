@@ -114,6 +114,7 @@ const COPY = {
     installUpdated: "已更新，当前进程里已经是新版本。",
     installStart: "开始安装",
     targetCommit: "目标提交",
+    releaseNotes: "更新说明",
     replacing: "插件正在替换中…",
     phaseLabels: {
       queued: "排队中",
@@ -144,6 +145,7 @@ const COPY = {
     reasonInstallationError: "这次安装本身有问题。",
     reasonUnsupportedInstallation: "这个安装位置不支持在线替换。",
     reasonManagerUnavailable: "插件管理服务还没准备好。",
+    reasonServiceUnavailable: "插件管理服务还没准备好，稍后再试。",
     checkFailed: "检查没有成功，稍后再试。",
     back: "返回对话",
     saving: "正在保存…",
@@ -367,6 +369,7 @@ function reasonText(text, reason) {
     case "installation-error": return text.reasonInstallationError;
     case "unsupported-installation": return text.reasonUnsupportedInstallation;
     case "manager-unavailable": return text.reasonManagerUnavailable;
+    case "service-unavailable": return text.reasonServiceUnavailable;
     default: return reason ? String(reason) : "";
   }
 }
@@ -476,6 +479,10 @@ function UpdatePanel({ text }) {
       canInstall ? h("button", { type: "button", onClick: install, disabled: !consent || pending !== "", style: controlStyle }, pending === "install" ? text.installing : text.install) : null),
     data?.operation?.targetSpec
       ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.targetCommit} ${data.operation.targetSpec}`)
+      : null,
+    data?.release?.releaseUrl
+      ? h("p", { style: { ...descStyle, marginTop: 12 } },
+        h("a", { href: data.release.releaseUrl, target: "_blank", rel: "noreferrer" }, text.releaseNotes))
       : null,
     note ? h("p", { style: { ...descStyle, marginTop: 12 } }, note) : null,
     error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null);

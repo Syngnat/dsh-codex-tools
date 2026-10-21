@@ -4,6 +4,16 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.18] - 2026-10-21
+
+### Fixed
+
+- The update page failed with "检查没有成功" because the route handler used an update service it never created. The route now builds the service when a request arrives, so a plugin manager or job service that mounts later no longer leaves the page empty, and a missing service is reported as a reason instead of an error.
+
+### Added
+
+- The update page links to the release notes of the version it found.
+
 ## [2.0.17] - 2026-10-21
 
 ### Added
