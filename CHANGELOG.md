@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.22] - 2026-10-21
+
+### Fixed
+
+- A live update could end as "更新失败，自动恢复也失败" even though the plugin came back on the old version. The activation check treated the transient states of a remount, such as a stale enabled flag, a loading fiber, two rows at once, or a route that has not answered yet, as a fatal failure. It now waits them out, and reports "需要重启" when the bundle is active but the running version cannot be confirmed, instead of demanding a manual reinstall.
+- A failed install that the plugin manager rolls back on its own is reported as a restore, not as a broken installation.
+
+### Added
+
+- The update page shows the failure code when a job fails, so the reason is visible instead of only the phase label.
+
 ## [2.0.21] - 2026-10-21
 
 ### Added

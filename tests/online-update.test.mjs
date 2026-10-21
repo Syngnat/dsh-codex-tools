@@ -221,3 +221,71 @@ test("versions compare numerically, not as text", () => {
 test("an error carries its reason code", () => {
   assert.equal(onlineError("busy").code, "busy");
 });
+
+test("a remount that passes through transient states still counts as live", async () => {
+  const manager = managerStub();
+  // The row reports "not enabled yet" and "loading" before it settles.
+  const phases = ["loading", "loading", "active"];
+  let index = 0;
+  manager.listPlugins = async () => {
+    const phase = phases[Math.min(index, phases.length - 1)];
+    const enabled = phase === "active";
+    index += 1;
+    return [{ moduleName: BUNDLE_NAME, enabled, fiberPhase: phase }];
+  };
+  const { online, records } = service({ manager });
+  const plan = await online.prepare();
+  await online.confirm({ token: plan.token, targetVersion: plan.targetVersion, consent: true });
+  const job = await waitFor(records);
+  const last = JSON.parse(job.chunks[job.chunks.length - 1].text);
+  assert.equal(last.phase, "updated");
+});
+
+test("two rows during a remount do not fail the update", async () => {
+  const manager = managerStub();
+  let calls = 0;
+  manager.listPlugins = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return [
+        { moduleName: BUNDLE_NAME, enabled: false, fiberPhase: "unloading" },
+        { moduleName: BUNDLE_NAME, enabled: true, fiberPhase: "active" },
+      ];
+    }
+    return [{ moduleName: BUNDLE_NAME, enabled: true, fiberPhase: "active" }];
+  };
+  const { online, records } = service({ manager });
+  const plan = await online.prepare();
+  await online.confirm({ token: plan.token, targetVersion: plan.targetVersion, consent: true });
+  const job = await waitFor(records);
+  const last = JSON.parse(job.chunks[job.chunks.length - 1].text);
+  assert.equal(last.phase, "updated");
+});
+
+test("an active bundle whose route cannot confirm the version asks for a restart", async () => {
+  const { online, records } = service({ readLoadedVersion: async () => null, activationAttempts: 2 });
+  const plan = await online.prepare();
+  await online.confirm({ token: plan.token, targetVersion: plan.targetVersion, consent: true });
+  const job = await waitFor(records);
+  const last = JSON.parse(job.chunks[job.chunks.length - 1].text);
+  assert.equal(last.phase, "restart-required");
+  assert.equal(last.restartRequired, true);
+});
+
+test("an install the manager rolls back on its own is reported as restored", async () => {
+  const manager = managerStub();
+  const before = { ...manager.state };
+  manager.installBundle = async () => {
+    manager.calls.push(["installBundle"]);
+    // The manager restores the previous profile manifest on a failed install.
+    Object.assign(manager.state, before);
+    throw Object.assign(new Error("pnpm failed"), { code: "install-failed" });
+  };
+  const { online, records } = service({ manager });
+  const plan = await online.prepare();
+  await online.confirm({ token: plan.token, targetVersion: plan.targetVersion, consent: true });
+  const job = await waitFor(records);
+  const last = JSON.parse(job.chunks[job.chunks.length - 1].text);
+  assert.equal(last.phase, "restored");
+  assert.equal(last.installedVersion, "2.0.0");
+});

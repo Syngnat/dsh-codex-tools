@@ -410,7 +410,10 @@ function UpdatePanel({ text }) {
     const operation = value?.operation ?? null;
     if (operation?.phase) {
       const label = text.phaseLabels[operation.phase] ?? operation.phase;
-      setNote(operation.terminal ? label : `${text.replacing}${label}`);
+      const reason = operation.error
+        ? ` · ${operation.error}${operation.detailCode ? ` / ${operation.detailCode}` : ""}`
+        : "";
+      setNote(`${operation.terminal ? label : `${text.replacing}${label}`}${reason}`);
     }
     return operation;
   };
