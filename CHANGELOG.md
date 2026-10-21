@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.25] - 2026-10-21
+
+### Changed
+
+- 批注截图 now marks the screenshot itself. The last click or drag is drawn on the picture as a red ring, with a dashed line for a drag, and removed again right after the capture. Before this it only added a line of text to the tool result, which the model already knew.
+
 ## [2.0.24] - 2026-10-21
 
 ### Changed

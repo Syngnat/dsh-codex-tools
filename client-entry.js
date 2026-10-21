@@ -49,7 +49,7 @@ const COPY = {
     historyEmpty: "还没有记录。",
     clearHistory: "清除记录",
     annotation: "批注截图",
-    annotationDesc: "截图可以帮助理解页面，但会增加上下文用量。",
+    annotationDesc: "截图会在图上标出最后一次点击或拖拽的位置，方便对照。",
     annotationAlways: "始终包含",
     annotationDrag: "仅在拖选时",
     autofill: "自动填充和密码",
