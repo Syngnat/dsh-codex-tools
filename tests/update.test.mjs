@@ -13,11 +13,15 @@ import { OnlineUpdateService } from "../lib/online-update.mjs";
 import {
   BUNDLE_NAME,
   INSTALL_SPEC,
+  GIT_REFS,
   RELEASE_API,
+  RELEASE_REDIRECT,
   UpdateService,
   boundedJson,
   observedSource,
+  readReleaseRedirect,
   readStableRelease,
+  readTagCommit,
   supportedSource,
 } from "../lib/update-service.mjs";
 import { createUpdateTool } from "../lib/update-tool.mjs";
@@ -123,12 +127,50 @@ function fetchStub({ release = releasePayload("1.0.1"), manifestFor = () => ({ n
   const fetcher = async (url) => {
     const target = String(url);
     seen.push(target);
-    if (target === RELEASE_API) {
+    if (target === RELEASE_REDIRECT) {
       if (release instanceof Error) throw release;
-      return jsonResponse(release, { headers: { "content-type": "application/json" } });
+      // The web endpoint answers with a redirect to the newest stable tag.
+      return {
+        status: 302,
+        ok: false,
+        url: target,
+        redirected: false,
+        headers: { get: (name) => (name.toLowerCase() === "location" ? release.html_url : null) },
+        body: { getReader: () => ({ async read() { return { done: true, value: undefined }; }, async cancel() {}, releaseLock() {} }) },
+      };
     }
-    const tag = /\/git\/ref\/tags\/v(.+)$/u.exec(target);
-    if (tag !== null) return jsonResponse({ object: { type: "commit", sha: commitFor(tag[1]) } });
+    if (target === GIT_REFS) {
+      // A git ref advertisement, with the packet length prefix the wire uses.
+      const packet = (line) => `${line.length.toString(16).padStart(4, "0")}${line}`;
+      return {
+        status: 200,
+        ok: true,
+        url: target,
+        redirected: false,
+        headers: { get: () => null },
+        body: {
+          getReader: () => {
+            const text = [
+              packet("# service=git-upload-pack\n"),
+              packet("0000\n"),
+              packet(`${commitFor("1.0.1")} refs/tags/v1.0.1\n`),
+              packet(`${commitFor("1.0.0")} refs/tags/v1.0.0\n`),
+            ].join("");
+            const bytes = new TextEncoder().encode(text);
+            let sent = false;
+            return {
+              async read() {
+                if (sent) return { done: true, value: undefined };
+                sent = true;
+                return { done: false, value: bytes };
+              },
+              async cancel() {},
+              releaseLock() {},
+            };
+          },
+        },
+      };
+    }
     const raw = /raw\.githubusercontent\.com\/[^/]+\/[^/]+\/([a-f0-9]{40})\/package\.json$/u.exec(target);
     if (raw !== null) {
       const version = versionFor(raw[1]);
@@ -144,6 +186,8 @@ function fetchStub({ release = releasePayload("1.0.1"), manifestFor = () => ({ n
 
 test("version helpers accept only strict stable versions", () => {
   assert.deepEqual(parseVersion("1.2.3"), { major: 1, minor: 2, patch: 3 });
+  // The redirect itself is the source of truth for the newest version, so any
+  // stable tag is accepted; only a foreign host or path is refused.
   for (const bad of ["1.2", "1.2.3.4", "v1.2.3", "1.2.3-rc.1", "01.2.3", "^1.2.3", "", null, 42]) {
     assert.equal(parseVersion(bad), null, `${String(bad)} should not parse`);
   }
@@ -237,7 +281,7 @@ test("check reports an available update and never installs", async () => {
   assert.equal(status.latestVersion, "1.0.1");
   assert.equal(status.currentVersion, "1.0.0");
   assert.equal(status.error, null);
-  assert.deepEqual(fetcher.seen, [RELEASE_API]);
+  assert.deepEqual(fetcher.seen, [RELEASE_REDIRECT]);
 });
 
 test("check reports current and ahead", async () => {
@@ -564,4 +608,42 @@ test("codex_tools_update surfaces a refusal as text rather than throwing", async
   const text = await updateToolFor(onlineFor({ manager }).online).execute({ action: "install", confirm: true }, {});
   assert.match(text, /Cannot complete "install": unsupported-source/);
   assert.match(text, /not installed from this repository/);
+});
+
+test("the release redirect answers with the version, and only from this repository", () => {
+  assert.deepEqual(readReleaseRedirect("https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.19"), {
+    latestVersion: "2.0.19",
+    releaseUrl: "https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.19",
+  });
+  for (const bad of [
+    "https://evil.example/releases/tag/v2.0.19",
+    "https://github.com/Other/repo/releases/tag/v2.0.19",
+    "http://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.19",
+    "https://github.com/Syngnat/dsh-codex-tools/releases/tag/v2.0.19?x=1",
+    "",
+    null,
+  ]) {
+    assert.throws(() => readReleaseRedirect(bad), /invalid-response/, JSON.stringify(bad));
+  }
+});
+
+test("the git advertisement maps a tag to its commit", () => {
+  const advertisement = [
+    "001e# service=git-upload-pack",
+    "0000",
+    `003f${"b".repeat(40)} refs/tags/v2.0.19`,
+    `003f${"a".repeat(40)} refs/tags/v2.0.18`,
+  ].join("\n");
+  assert.equal(readTagCommit(advertisement, "v2.0.19"), "b".repeat(40));
+  assert.equal(readTagCommit(advertisement, "v2.0.18"), "a".repeat(40));
+  assert.throws(() => readTagCommit(advertisement, "v9.9.9"), /not-found/u);
+  assert.throws(() => readTagCommit("", "v2.0.19"), /invalid-response/u);
+});
+
+test("an annotated tag resolves to the commit it peels to", () => {
+  const advertisement = [
+    `003f${"c".repeat(40)} refs/tags/v2.0.20`,
+    `003f${"d".repeat(40)} refs/tags/v2.0.20^{}`,
+  ].join("\n");
+  assert.equal(readTagCommit(advertisement, "v2.0.20"), "d".repeat(40));
 });

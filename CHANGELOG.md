@@ -4,6 +4,13 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.20] - 2026-10-21
+
+### Fixed
+
+- The update check no longer depends on the anonymous GitHub API quota. The version now comes from the `releases/latest` redirect and the pinned commit from the git ref advertisement, so a shared address that spent its sixty-per-hour quota still finds new releases. The REST API stays as a fallback.
+- Every GitHub request retries a transport hiccup. The first connection through a proxy can hang for the whole timeout, which is why the check used to fail on a cold connection.
+
 ## [2.0.19] - 2026-10-21
 
 ### Fixed
