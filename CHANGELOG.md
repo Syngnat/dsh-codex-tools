@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.16] - 2026-10-21
+
+### Changed
+
+- The online update now replaces the plugin in place, like the prompt-assist plugin. The install runs in a Host job, so removing this plugin no longer aborts the work that replaces it, and the job reads the running version back through the plugin's own route before it claims the update succeeded. When the new code is live the page says so and no restart is needed.
+- The page shows the update job's phases while the swap runs, and reads the job's result afterwards.
+
+### Added
+
+- `codex_tools_update` gained an `operation` action that reports the state of the update job.
+
 ## [2.0.15] - 2026-10-21
 
 ### Fixed

@@ -9,6 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { compareVersions, isStableVersion, parseVersion, versionFromTag } from "../lib/version.mjs";
+import { OnlineUpdateService } from "../lib/online-update.mjs";
 import {
   BUNDLE_NAME,
   INSTALL_SPEC,
@@ -84,6 +85,9 @@ function managerStub({ rows = [bundleRow()], receipts = {} } = {}) {
     state,
     async listBundles() {
       return state.rows;
+    },
+    async listPlugins() {
+      return [{ moduleName: BUNDLE_NAME, enabled: state.rows[0]?.enabled ?? true, fiberPhase: "active" }];
     },
     async removeBundle(name) {
       calls.push(["removeBundle", name]);
@@ -455,100 +459,109 @@ test("install does not overwrite an installation another caller made", async () 
 
 // ------------------------------------------------------------------- tool
 
-/** A tool wired to a stub service. */
-function updateToolFor(service) {
-  return createUpdateTool({
-    defineTool,
-    getService: () => undefined,
-    createService: () => service,
-  });
+/** A job service that runs the job body in place and keeps its log. */
+function jobsStub() {
+  const records = new Map();
+  let seq = 0;
+  return {
+    records,
+    list: () => [...records.values()].map((job) => ({ id: job.id, kind: job.kind, status: job.status, owner: job.owner })),
+    readAt: (id) => ({ chunks: records.get(id)?.chunks ?? [] }),
+    attachController: () => () => {},
+    start(spec) {
+      const id = `job-${++seq}`;
+      const job = { id, kind: spec.kind, status: "running", owner: undefined, chunks: [] };
+      records.set(id, job);
+      const handle = { id, updateProgress: () => {}, append: (text) => job.chunks.push({ text }) };
+      const control = spec.run(handle);
+      control.done.then((result) => {
+        job.status = result.status === "completed" ? "done" : result.status;
+      });
+      return id;
+    },
+  };
 }
 
-test("codex_tools_update exposes status, check and install", () => {
-  const tool = updateToolFor(new UpdateService({ currentVersion: "1.0.0", manager: managerStub() }));
-  assert.deepEqual(tool.parameters.properties.action.enum, ["status", "check", "install"]);
+/** An online update service over the stubs in this file. */
+function onlineFor({ manager = managerStub(), fetch = fetchStub(), jobs = jobsStub(), loaded = "1.0.1" } = {}) {
+  const updates = new UpdateService({ currentVersion: "1.0.0", manager, fetch });
+  const online = new OnlineUpdateService({
+    manager,
+    jobs,
+    currentVersion: "1.0.0",
+    updates,
+    hasHmr: true,
+    readLoadedVersion: async () => loaded,
+    activationAttempts: 3,
+    wait: async () => {},
+  });
+  return { online, manager, jobs, updates };
+}
+
+/** A tool wired to an online update service. */
+function updateToolFor(online) {
+  return createUpdateTool({ defineTool, getOnline: () => online });
+}
+
+test("codex_tools_update exposes status, check, install and operation", () => {
+  const tool = updateToolFor(onlineFor().online);
+  assert.deepEqual(tool.parameters.properties.action.enum, ["status", "check", "install", "operation"]);
   assert.deepEqual(tool.parameters.required, ["action"]);
 });
 
 test("codex_tools_update status explains the running version and eligibility", async () => {
-  const service = new UpdateService({ currentVersion: "1.0.0", manager: managerStub() });
-  const text = await updateToolFor(service).execute({ action: "status" }, {});
+  const text = await updateToolFor(onlineFor().online).execute({ action: "status" }, {});
   assert.match(text, /running version: 1\.0\.0/);
   assert.match(text, /online update available: yes/);
   assert.match(text, /github\.com\/Syngnat\/dsh-codex-tools/);
 });
 
 test("codex_tools_update status names why an update is refused", async () => {
-  const service = new UpdateService({
-    currentVersion: "1.0.0",
-    manager: managerStub({ rows: [bundleRow({ source: "link:/tmp/checkout" })] }),
-  });
-  const text = await updateToolFor(service).execute({ action: "status" }, {});
+  const manager = managerStub({ rows: [bundleRow({ source: "link:/tmp/checkout" })] });
+  const text = await updateToolFor(onlineFor({ manager }).online).execute({ action: "status" }, {});
   assert.match(text, /online update available: no \(unsupported-source\)/);
 });
 
 test("codex_tools_update check reports the release and the next step", async () => {
-  const service = new UpdateService({ currentVersion: "1.0.0", manager: managerStub(), fetch: fetchStub() });
-  const text = await updateToolFor(service).execute({ action: "check" }, {});
+  const text = await updateToolFor(onlineFor().online).execute({ action: "check" }, {});
   assert.match(text, /latest release: 1\.0\.1/);
   assert.match(text, /confirm: true/);
 });
 
 test("codex_tools_update install refuses without confirm and says so", async () => {
-  const manager = managerStub();
-  const service = new UpdateService({ currentVersion: "1.0.0", manager, fetch: fetchStub() });
-  const text = await updateToolFor(service).execute({ action: "install" }, {});
+  const { online, manager } = onlineFor();
+  const text = await updateToolFor(online).execute({ action: "install" }, {});
   assert.match(text, /Refusing to install without explicit confirmation/);
   assert.deepEqual(manager.calls, []);
 });
 
-test("codex_tools_update install reports a successful update", async () => {
-  const manager = managerStub();
-  const service = new UpdateService({ currentVersion: "1.0.0", manager, fetch: fetchStub() });
-  await service.check();
-  const text = await updateToolFor(service).execute({ action: "install", confirm: true }, {});
-  assert.match(text, /Updated @local\/dsh-codex-tools from 1\.0\.0 to 1\.0\.1/);
-  assert.match(text, /no restart was required/);
+test("codex_tools_update install starts a job that replaces the bundle in place", async () => {
+  const { online, manager } = onlineFor();
+  const text = await updateToolFor(online).execute({ action: "install", confirm: true }, {});
+  assert.match(text, /Started update job job-\d+/);
+  assert.match(text, /1\.0\.0 → 1\.0\.1/);
+  assert.match(text, /outlives the swap/);
+  // The job runs after the tool returns, so the swap is observed shortly after.
+  for (let attempt = 0; attempt < 200 && manager.calls.length < 3; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.deepEqual(
+    manager.calls.map((call) => call[0]),
+    ["removeBundle", "installBundle", "setBundleEnabled"],
+  );
 });
 
-test("codex_tools_update install reports a restore as a non-fatal outcome", async () => {
-  const manager = managerStub();
-  let installs = 0;
-  const original = manager.installBundle.bind(manager);
-  manager.installBundle = async (spec, options) => {
-    installs += 1;
-    if (installs === 1) {
-      manager.calls.push(["installBundle", spec, options]);
-      return { application: "failed", error: { code: "install-failed" } };
-    }
-    return original(spec, options);
-  };
-  const service = new UpdateService({ currentVersion: "1.0.0", manager, fetch: fetchStub() });
-  await service.check();
-  const text = await updateToolFor(service).execute({ action: "install", confirm: true }, {});
-  assert.match(text, /previous version 1\.0\.0 was restored/);
-});
-
-test("codex_tools_update install reports repair-required with a manual command", async () => {
-  const manager = managerStub();
-  manager.installBundle = async (spec, options) => {
-    manager.calls.push(["installBundle", spec, options]);
-    return { application: "failed", error: { code: "install-failed" } };
-  };
-  const service = new UpdateService({ currentVersion: "1.0.0", manager, fetch: fetchStub() });
-  await service.check();
-  const text = await updateToolFor(service).execute({ action: "install", confirm: true }, {});
-  assert.match(text, /automatic restore also failed/);
-  assert.match(text, /dsh plugin install github:Syngnat\/dsh-codex-tools/);
+test("codex_tools_update operation reads the job state", async () => {
+  const { online } = onlineFor();
+  assert.match(await updateToolFor(online).execute({ action: "operation" }, {}), /no update job has run yet/);
+  await updateToolFor(online).execute({ action: "install", confirm: true }, {});
+  const text = await updateToolFor(online).execute({ action: "operation" }, {});
+  assert.match(text, /job job-\d+/);
 });
 
 test("codex_tools_update surfaces a refusal as text rather than throwing", async () => {
-  const service = new UpdateService({
-    currentVersion: "1.0.0",
-    manager: managerStub({ rows: [bundleRow({ source: "link:/tmp/checkout" })] }),
-    fetch: fetchStub(),
-  });
-  const text = await updateToolFor(service).execute({ action: "install", confirm: true }, {});
+  const manager = managerStub({ rows: [bundleRow({ source: "link:/tmp/checkout" })] });
+  const text = await updateToolFor(onlineFor({ manager }).online).execute({ action: "install", confirm: true }, {});
   assert.match(text, /Cannot complete "install": unsupported-source/);
   assert.match(text, /not installed from this repository/);
 });

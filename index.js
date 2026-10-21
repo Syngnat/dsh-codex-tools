@@ -22,7 +22,8 @@ import { createBrowserTool, createBrowserUseTool } from "./lib/browser-tool.mjs"
 import { createSessionTool } from "./lib/session-tool.mjs";
 import { createUpdateTool } from "./lib/update-tool.mjs";
 import { UpdateService } from "./lib/update-service.mjs";
-import { installUpdatePageHost } from "./lib/update-host.mjs";
+import { OnlineUpdateService } from "./lib/online-update.mjs";
+import { installUpdatePageHost, UPDATE_PAGE_PATH } from "./lib/update-host.mjs";
 import { installSettingsHost } from "./lib/settings-host.mjs";
 
 /** Plugin name used by the loader. */
@@ -73,6 +74,47 @@ export function apply(ctx, config = {}) {
     return updateService;
   };
 
+  // The probe reads the version the update route serves right now. After a
+  // live swap the new instance answers with the new version, which is how the
+  // job knows the new code is really running and not merely on disk.
+  const readLoadedVersion =
+    typeof ctx.connection?.createSharedFetchHandler === "function" && ctx.connection.browserPeer
+      ? async () => {
+          const response = await ctx.connection
+            .createSharedFetchHandler("/api")
+            .fetch(new Request(`http://connection.invalid${UPDATE_PAGE_PATH}`), ctx.connection.browserPeer);
+          if (!response.ok) return null;
+          try {
+            return (await response.json()).currentVersion ?? null;
+          } catch {
+            return null;
+          }
+        }
+      : undefined;
+
+  // One online update service per mount, shared by the tool and the page.
+  let online = null;
+  const getOnline = () => {
+    if (online === null) {
+      const manager = getService("pluginManager");
+      const jobs = getService("jobs");
+      if (!manager || !jobs) {
+        throw new Error("codex-tools: this deployment mounts no plugin manager and jobs service");
+      }
+      const version = readOwnVersion();
+      if (version === null) throw new Error("codex-tools: cannot read the plugin's own version from package.json");
+      online = new OnlineUpdateService({
+        manager,
+        jobs,
+        currentVersion: version,
+        updates: createService(manager),
+        hasHmr: Boolean(getService("hmr")),
+        readLoadedVersion,
+      });
+    }
+    return online;
+  };
+
   const definitions = [];
   if (settings.computerUse !== false) {
     definitions.push(createComputerTool({ ax, defineTool: define }));
@@ -87,17 +129,18 @@ export function apply(ctx, config = {}) {
     definitions.push(createSessionTool({ defineTool: define, getService }));
   }
   if (settings.update !== false) {
-    definitions.push(createUpdateTool({ defineTool: define, getService, createService }));
+    definitions.push(createUpdateTool({ defineTool: define, getOnline }));
   }
 
   for (const definition of definitions) {
     ctx.tools.register(definition);
   }
 
-  installUpdatePageHost(ctx, { getService, createService });
+  installUpdatePageHost(ctx, { getOnline });
   installSettingsHost(ctx);
 
   const dispose = () => {
+    online?.dispose();
     updateService?.dispose();
     void ax.dispose().catch(() => {});
     void browser.dispose().catch(() => {});

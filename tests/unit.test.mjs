@@ -450,11 +450,16 @@ test("computer helper rejects systems other than macOS and Windows", () => {
   assert.throws(() => computerHelperLaunch("linux"), /does not support linux/);
 });
 
-test("the update page accepts check and a confirmed install only", () => {
+test("the update page accepts check, prepare and a confirmed install only", () => {
+  const token = "c".repeat(64);
   assert.equal(updatePageAction({ action: "check" }), "check");
-  assert.equal(updatePageAction({ action: "install", confirm: true }), "install");
-  assert.equal(updatePageAction({ action: "install", confirm: false }), null);
-  assert.equal(updatePageAction({ action: "install", confirm: true, extra: 1 }), null);
+  assert.equal(updatePageAction({ action: "prepare" }), "prepare");
+  assert.equal(updatePageAction({ action: "confirm", token, targetVersion: "2.0.1", consent: true }), "confirm");
+  assert.equal(updatePageAction({ action: "confirm", token, targetVersion: "2.0.1", consent: false }), null);
+  assert.equal(updatePageAction({ action: "confirm", token, targetVersion: "2.0.1" }), null);
+  assert.equal(updatePageAction({ action: "confirm", token: "short", targetVersion: "2.0.1", consent: true }), null);
+  assert.equal(updatePageAction({ action: "confirm", token, targetVersion: "2.0.1", consent: true, extra: 1 }), null);
+  assert.equal(updatePageAction({ action: "install", confirm: true }), null);
 });
 
 test("settings keep only the computer and browser switches", () => {

@@ -112,6 +112,24 @@ const COPY = {
     upToDate: "已经是最新稳定版。",
     hasUpdate: "有新版本可以安装。",
     installUpdated: "已更新，当前进程里已经是新版本。",
+    installStart: "开始安装",
+    replacing: "插件正在替换中…",
+    phaseLabels: {
+      queued: "排队中",
+      checking: "核对当前安装",
+      removing: "卸载旧版本",
+      installing: "安装新版本",
+      activating: "启用新版本",
+      verifying: "确认新版本已生效",
+      recovering: "出错，正在恢复旧版本",
+      updated: "更新完成，新版本已经自己加载回来了",
+      "restart-required": "更新完成，需要完全退出并重新打开 DeepSeek Harness",
+      restored: "更新失败，已恢复旧版本",
+      "repair-required": "更新失败，自动恢复也失败，请手动重装",
+      failed: "更新失败",
+      cancelled: "已取消",
+      unknown: "状态未知",
+    },
     installRestart: "安装完成。请完全退出并重新打开 DeepSeek Harness。",
     installRestored: "更新失败，已恢复上一版本。",
     installRepair: "更新失败，自动恢复也失败，请用命令行重新安装。",
@@ -371,38 +389,68 @@ function UpdatePanel({ text }) {
   const [pending, setPending] = React.useState("");
   const [note, setNote] = React.useState("");
   const [error, setError] = React.useState("");
+  const pollRef = React.useRef(null);
+
+  const stopPolling = () => {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+  React.useEffect(() => () => stopPolling(), []);
+
+  const applyStatus = (value) => {
+    setData(value);
+    const operation = value?.operation ?? null;
+    if (operation?.phase) {
+      const label = text.phaseLabels[operation.phase] ?? operation.phase;
+      setNote(operation.terminal ? label : `${text.replacing}${label}`);
+    }
+    return operation;
+  };
+
   React.useEffect(() => {
     let live = true;
-    callUpdate().then((value) => { if (live) setData(value); }).catch(() => { if (live) setError(text.checkFailed); });
-    return () => { live = false; };
+    callUpdate()
+      .then((value) => { if (live) applyStatus(value); })
+      .catch(() => { if (live) setError(text.checkFailed); });
+    return () => { live = false; stopPolling(); };
   }, [text.checkFailed]);
+
   async function check() {
     setPending("check"); setNote(""); setError("");
-    try { setData(await callUpdate({ action: "check" })); }
+    try { applyStatus(await callUpdate({ action: "check" })); }
     catch { setError(text.checkFailed); }
     finally { setPending(""); }
   }
+
   async function install() {
     setPending("install"); setNote(""); setError("");
     try {
-      const result = await callUpdate({ action: "install", confirm: true });
-      setNote(result?.outcome === "restart-required" ? text.installRestart
-        : result?.outcome === "restored" ? text.installRestored
-        : result?.outcome === "repair-required" ? text.installRepair
-        : text.installUpdated);
+      const plan = await callUpdate({ action: "prepare" });
+      await callUpdate({ action: "confirm", token: plan.token, targetVersion: plan.targetVersion, consent: true });
       setConsent(false);
-      try { setData(await callUpdate()); } catch { /* keep the previous view */ }
+      setNote(text.replacing);
+      stopPolling();
+      pollRef.current = setInterval(() => {
+        void callUpdate().then((value) => {
+          const operation = applyStatus(value);
+          if (operation?.terminal) { stopPolling(); setPending(""); }
+        }).catch(() => { /* the route is gone while the plugin is replaced */ });
+      }, 1000);
     } catch (failure) {
       const code = String(failure?.message ?? "");
-      setError(code === "repair-required" ? text.installRepair : `${text.cannotUpdate}${code ? `（${code}）` : ""}`);
-    } finally { setPending(""); }
+      setError(code ? `${text.cannotUpdate}（${code}）` : text.cannotUpdate);
+      setPending("");
+    }
   }
+
   const running = typeof data?.currentVersion === "string" ? data.currentVersion : null;
-  const latest = typeof data?.latestVersion === "string" ? data.latestVersion : null;
+  const latest = typeof data?.release?.latestVersion === "string" ? data.release.latestVersion : null;
   const installed = typeof data?.installedVersion === "string" ? data.installedVersion : null;
-  const canInstall = data?.status === "update-available" && data?.available === true;
-  // A newer copy on disk than the one this process loaded only needs a restart.
+  const canInstall = data?.available === true && data?.release?.status === "update-available";
   const restartPending = data?.reason === "restart-required";
+  const busy = data?.reason === "busy";
   return h("div", null,
     h("h1", { style: titleStyle }, text.updateTitle),
     h("p", { style: subtitleStyle }, text.updateSubtitle),
@@ -415,9 +463,11 @@ function UpdatePanel({ text }) {
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null),
     restartPending
       ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "新版本"))
-      : data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
-    !restartPending && data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
-    !restartPending && data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}：${reasonText(text, data.reason)}`) : null,
+      : data?.release?.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
+    !restartPending && canInstall ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
+    !restartPending && !canInstall && !busy && data?.available === false
+      ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}：${reasonText(text, data.reason)}`)
+      : null,
     canInstall ? h("label", { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13 } },
       h("input", { type: "checkbox", checked: consent, onChange: (event) => setConsent(event.target.checked) }), text.consent) : null,
     h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },

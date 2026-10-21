@@ -146,6 +146,24 @@ var COPY = {
     upToDate: "\u5DF2\u7ECF\u662F\u6700\u65B0\u7A33\u5B9A\u7248\u3002",
     hasUpdate: "\u6709\u65B0\u7248\u672C\u53EF\u4EE5\u5B89\u88C5\u3002",
     installUpdated: "\u5DF2\u66F4\u65B0\uFF0C\u5F53\u524D\u8FDB\u7A0B\u91CC\u5DF2\u7ECF\u662F\u65B0\u7248\u672C\u3002",
+    installStart: "\u5F00\u59CB\u5B89\u88C5",
+    replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
+    phaseLabels: {
+      queued: "\u6392\u961F\u4E2D",
+      checking: "\u6838\u5BF9\u5F53\u524D\u5B89\u88C5",
+      removing: "\u5378\u8F7D\u65E7\u7248\u672C",
+      installing: "\u5B89\u88C5\u65B0\u7248\u672C",
+      activating: "\u542F\u7528\u65B0\u7248\u672C",
+      verifying: "\u786E\u8BA4\u65B0\u7248\u672C\u5DF2\u751F\u6548",
+      recovering: "\u51FA\u9519\uFF0C\u6B63\u5728\u6062\u590D\u65E7\u7248\u672C",
+      updated: "\u66F4\u65B0\u5B8C\u6210\uFF0C\u65B0\u7248\u672C\u5DF2\u7ECF\u81EA\u5DF1\u52A0\u8F7D\u56DE\u6765\u4E86",
+      "restart-required": "\u66F4\u65B0\u5B8C\u6210\uFF0C\u9700\u8981\u5B8C\u5168\u9000\u51FA\u5E76\u91CD\u65B0\u6253\u5F00 DeepSeek Harness",
+      restored: "\u66F4\u65B0\u5931\u8D25\uFF0C\u5DF2\u6062\u590D\u65E7\u7248\u672C",
+      "repair-required": "\u66F4\u65B0\u5931\u8D25\uFF0C\u81EA\u52A8\u6062\u590D\u4E5F\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u91CD\u88C5",
+      failed: "\u66F4\u65B0\u5931\u8D25",
+      cancelled: "\u5DF2\u53D6\u6D88",
+      unknown: "\u72B6\u6001\u672A\u77E5"
+    },
     installRestart: "\u5B89\u88C5\u5B8C\u6210\u3002\u8BF7\u5B8C\u5168\u9000\u51FA\u5E76\u91CD\u65B0\u6253\u5F00 DeepSeek Harness\u3002",
     installRestored: "\u66F4\u65B0\u5931\u8D25\uFF0C\u5DF2\u6062\u590D\u4E0A\u4E00\u7248\u672C\u3002",
     installRepair: "\u66F4\u65B0\u5931\u8D25\uFF0C\u81EA\u52A8\u6062\u590D\u4E5F\u5931\u8D25\uFF0C\u8BF7\u7528\u547D\u4EE4\u884C\u91CD\u65B0\u5B89\u88C5\u3002",
@@ -493,15 +511,33 @@ function UpdatePanel({ text }) {
   const [pending, setPending] = import_react.default.useState("");
   const [note, setNote] = import_react.default.useState("");
   const [error, setError] = import_react.default.useState("");
+  const pollRef = import_react.default.useRef(null);
+  const stopPolling = () => {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+  import_react.default.useEffect(() => () => stopPolling(), []);
+  const applyStatus = (value) => {
+    setData(value);
+    const operation = value?.operation ?? null;
+    if (operation?.phase) {
+      const label = text.phaseLabels[operation.phase] ?? operation.phase;
+      setNote(operation.terminal ? label : `${text.replacing}${label}`);
+    }
+    return operation;
+  };
   import_react.default.useEffect(() => {
     let live = true;
     callUpdate().then((value) => {
-      if (live) setData(value);
+      if (live) applyStatus(value);
     }).catch(() => {
       if (live) setError(text.checkFailed);
     });
     return () => {
       live = false;
+      stopPolling();
     };
   }, [text.checkFailed]);
   async function check() {
@@ -509,7 +545,7 @@ function UpdatePanel({ text }) {
     setNote("");
     setError("");
     try {
-      setData(await callUpdate({ action: "check" }));
+      applyStatus(await callUpdate({ action: "check" }));
     } catch {
       setError(text.checkFailed);
     } finally {
@@ -521,25 +557,33 @@ function UpdatePanel({ text }) {
     setNote("");
     setError("");
     try {
-      const result = await callUpdate({ action: "install", confirm: true });
-      setNote(result?.outcome === "restart-required" ? text.installRestart : result?.outcome === "restored" ? text.installRestored : result?.outcome === "repair-required" ? text.installRepair : text.installUpdated);
+      const plan = await callUpdate({ action: "prepare" });
+      await callUpdate({ action: "confirm", token: plan.token, targetVersion: plan.targetVersion, consent: true });
       setConsent(false);
-      try {
-        setData(await callUpdate());
-      } catch {
-      }
+      setNote(text.replacing);
+      stopPolling();
+      pollRef.current = setInterval(() => {
+        void callUpdate().then((value) => {
+          const operation = applyStatus(value);
+          if (operation?.terminal) {
+            stopPolling();
+            setPending("");
+          }
+        }).catch(() => {
+        });
+      }, 1e3);
     } catch (failure) {
       const code = String(failure?.message ?? "");
-      setError(code === "repair-required" ? text.installRepair : `${text.cannotUpdate}${code ? `\uFF08${code}\uFF09` : ""}`);
-    } finally {
+      setError(code ? `${text.cannotUpdate}\uFF08${code}\uFF09` : text.cannotUpdate);
       setPending("");
     }
   }
   const running = typeof data?.currentVersion === "string" ? data.currentVersion : null;
-  const latest = typeof data?.latestVersion === "string" ? data.latestVersion : null;
+  const latest = typeof data?.release?.latestVersion === "string" ? data.release.latestVersion : null;
   const installed = typeof data?.installedVersion === "string" ? data.installedVersion : null;
-  const canInstall = data?.status === "update-available" && data?.available === true;
+  const canInstall = data?.available === true && data?.release?.status === "update-available";
   const restartPending = data?.reason === "restart-required";
+  const busy = data?.reason === "busy";
   return h(
     "div",
     null,
@@ -555,9 +599,9 @@ function UpdatePanel({ text }) {
       Row({ title: text.latestVersion, description: latest ?? text.check, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null
     ),
-    restartPending ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "\u65B0\u7248\u672C")) : data && data.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
-    !restartPending && data && data.status === "update-available" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
-    !restartPending && data && data.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}\uFF1A${reasonText(text, data.reason)}`) : null,
+    restartPending ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "\u65B0\u7248\u672C")) : data?.release?.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,
+    !restartPending && canInstall ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.hasUpdate) : null,
+    !restartPending && !canInstall && !busy && data?.available === false ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.cannotUpdate}\uFF1A${reasonText(text, data.reason)}`) : null,
     canInstall ? h(
       "label",
       { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 14, fontSize: 13 } },
