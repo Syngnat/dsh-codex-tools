@@ -113,10 +113,16 @@ Actions: `list_browsers`, `list_tabs`, `open_tab`, `get_tab`, `documentation`,
 `select_text`, `set_value`, `goto`, `back`, `forward`, `reload`, `close`,
 `screenshot`.
 
-Browsers come from the Codex Chrome extension, the in-app browser, or any
-provider the runtime advertises. `list_browsers` shows what is connected;
-`list_tabs` shows tabs; `open_tab` or `get_tab` binds one and keeps it bound for
-later calls.
+The plugin launches its own Chrome over the DevTools Protocol. `list_browsers`
+shows the owned windows; `list_tabs` shows tabs; `open_tab` or `get_tab` binds
+one and keeps it bound for later calls.
+
+`state` prints one line per accessibility node with an element id, for example
+`[1234567] button Submit`. Those ids stay valid for that page, so a later
+`state` read does not renumber them, and an id can still be used after the page
+changed. `press_key` takes xdotool-style names (`Return`, `Tab`, `ArrowDown`,
+`super+c`) and chords. `set_value` replaces the field contents instead of
+appending to them.
 
 ## `browser_use`
 

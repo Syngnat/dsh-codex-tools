@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.13] - 2026-10-21
+
+### Fixed
+
+- `press_key` sent the key name as the event text, so Chrome rejected every key with `Invalid 'text' parameter`. Keys and chords are now mapped to `key`, `code` and `windowsVirtualKeyCode`, text is only sent for printable keys, and `duration_ms` is honoured.
+- `set_value` appended to the existing field contents. It now selects the old contents first, so the field ends up with exactly the new value.
+- Element ids were array positions in the accessibility tree, so inserting one node renumbered every later element. Ids are now derived from the accessibility node id and stay valid across reads.
+- A click that opens a `target=_blank` link now says which tab it opened.
+- A failed focus is reported instead of being swallowed.
+- A Chrome that was killed left a stale `DevToolsActivePort` file, and the plugin then talked to a dead port. The stale file is now cleared before Chrome starts.
+
 ## [2.0.12] - 2026-10-21
 
 ### Fixed

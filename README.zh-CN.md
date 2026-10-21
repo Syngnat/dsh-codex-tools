@@ -103,8 +103,12 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 `select_text`、`set_value`、`goto`、`back`、`forward`、`reload`、`close`、
 `screenshot`。
 
-浏览器来自 Codex 的 Chrome 扩展、内置浏览器，或运行时对外公布的其他 provider。
-`list_browsers` 看有哪些连着，`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
+插件自己通过 DevTools 协议拉起一个 Chrome。`list_browsers` 看自己开的窗口，
+`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
+
+`state` 每个无障碍节点打印一行，格式是 `[1234567] button Submit`。这个编号在同一个页面里保持有效，
+之后再读一次 `state` 不会重新编号，页面变了也能继续用旧的编号。`press_key` 接受 xdotool 风格的
+按键名（`Return`、`Tab`、`ArrowDown`、`super+c`）和组合键。`set_value` 是替换输入框里的内容，不是追加。
 
 ## `browser_use`
 
