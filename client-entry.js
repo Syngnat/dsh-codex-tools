@@ -113,6 +113,7 @@ const COPY = {
     hasUpdate: "有新版本可以安装。",
     installUpdated: "已更新，当前进程里已经是新版本。",
     installStart: "开始安装",
+    targetCommit: "目标提交",
     replacing: "插件正在替换中…",
     phaseLabels: {
       queued: "排队中",
@@ -473,6 +474,9 @@ function UpdatePanel({ text }) {
     h("div", { style: { display: "flex", gap: 8, marginTop: 14 } },
       h("button", { type: "button", onClick: check, disabled: pending !== "", style: controlStyle }, pending === "check" ? text.checking : text.check),
       canInstall ? h("button", { type: "button", onClick: install, disabled: !consent || pending !== "", style: controlStyle }, pending === "install" ? text.installing : text.install) : null),
+    data?.operation?.targetSpec
+      ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.targetCommit} ${data.operation.targetSpec}`)
+      : null,
     note ? h("p", { style: { ...descStyle, marginTop: 12 } }, note) : null,
     error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null);
 }

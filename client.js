@@ -147,6 +147,7 @@ var COPY = {
     hasUpdate: "\u6709\u65B0\u7248\u672C\u53EF\u4EE5\u5B89\u88C5\u3002",
     installUpdated: "\u5DF2\u66F4\u65B0\uFF0C\u5F53\u524D\u8FDB\u7A0B\u91CC\u5DF2\u7ECF\u662F\u65B0\u7248\u672C\u3002",
     installStart: "\u5F00\u59CB\u5B89\u88C5",
+    targetCommit: "\u76EE\u6807\u63D0\u4EA4",
     replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
     phaseLabels: {
       queued: "\u6392\u961F\u4E2D",
@@ -614,6 +615,7 @@ function UpdatePanel({ text }) {
       h("button", { type: "button", onClick: check, disabled: pending !== "", style: controlStyle }, pending === "check" ? text.checking : text.check),
       canInstall ? h("button", { type: "button", onClick: install, disabled: !consent || pending !== "", style: controlStyle }, pending === "install" ? text.installing : text.install) : null
     ),
+    data?.operation?.targetSpec ? h("p", { style: { ...descStyle, marginTop: 12 } }, `${text.targetCommit} ${data.operation.targetSpec}`) : null,
     note ? h("p", { style: { ...descStyle, marginTop: 12 } }, note) : null,
     error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null
   );

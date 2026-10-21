@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.17] - 2026-10-21
+
+### Added
+
+- The update page shows the immutable commit the update installs, so the target is visible while the job runs.
+
 ## [2.0.16] - 2026-10-21
 
 ### Changed
