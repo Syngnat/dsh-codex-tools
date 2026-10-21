@@ -149,6 +149,7 @@ var COPY = {
     installStart: "\u5F00\u59CB\u5B89\u88C5",
     targetCommit: "\u76EE\u6807\u63D0\u4EA4",
     releaseNotes: "\u66F4\u65B0\u8BF4\u660E",
+    notChecked: "\u8FD8\u6CA1\u6709\u68C0\u67E5\u8FC7",
     replacing: "\u63D2\u4EF6\u6B63\u5728\u66FF\u6362\u4E2D\u2026",
     phaseLabels: {
       queued: "\u6392\u961F\u4E2D",
@@ -601,7 +602,7 @@ function UpdatePanel({ text }) {
       h("div", { style: hairline }),
       Row({ title: text.installedVersion, description: installed ?? "\u2026", control: null }),
       h("div", { style: hairline }),
-      Row({ title: text.latestVersion, description: latest ?? text.check, control: null }),
+      Row({ title: text.latestVersion, description: latest ?? text.notChecked, control: null }),
       data?.source ? h("div", null, h("div", { style: hairline }), Row({ title: text.source, description: data.source, control: null })) : null
     ),
     restartPending ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.restartPending.replace("{version}", installed ?? latest ?? "\u65B0\u7248\u672C")) : data?.release?.status === "current" ? h("p", { style: { ...descStyle, marginTop: 12 } }, text.upToDate) : null,

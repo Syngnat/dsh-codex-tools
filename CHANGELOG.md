@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.19] - 2026-10-21
+
+### Fixed
+
+- The latest version row said "检查更新" when no check had run yet, which read like a version number. It now says the check has not run.
+
 ## [2.0.18] - 2026-10-21
 
 ### Fixed
