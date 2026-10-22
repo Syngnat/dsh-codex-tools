@@ -78,10 +78,10 @@ test("apply registers exactly the five tools", () => {
   const ctx = fakeContext();
   apply(ctx, {});
   assert.deepEqual([...ctx.registered.keys()].sort(), [
-    "browser",
-    "browser_use",
     "codex_tools_update",
-    "computer_use",
+    "mcp__browser",
+    "mcp__browser_use",
+    "mcp__computer_use",
     "session_message",
   ]);
 });
@@ -148,7 +148,7 @@ test("declaring connection lets apply register the host routes", () => {
 test("computer_use exposes every documented action", () => {
   const ctx = fakeContext();
   apply(ctx, {});
-  const actions = ctx.registered.get("computer_use").parameters.properties.action.enum;
+  const actions = ctx.registered.get("mcp__computer_use").parameters.properties.action.enum;
   assert.deepEqual(actions, [
     "list_apps",
     "list_windows",
@@ -169,7 +169,7 @@ test("computer_use exposes every documented action", () => {
 test("browser exposes every documented action", () => {
   const ctx = fakeContext();
   apply(ctx, {});
-  const actions = ctx.registered.get("browser").parameters.properties.action.enum;
+  const actions = ctx.registered.get("mcp__browser").parameters.properties.action.enum;
   assert.ok(actions.includes("open_tab"));
   assert.ok(actions.includes("get_tab"));
   assert.ok(actions.includes("goto"));
@@ -404,7 +404,7 @@ test("list actions reach the local backends and never a Codex runtime", async ()
 test("browser_use opens a tab through its own driver", async () => {
   const driver = recordingBackend();
   const tool = createBrowserUseTool({ driver, defineTool });
-  assert.equal(tool.name, "browser_use");
+  assert.equal(tool.name, "mcp__browser_use");
   await tool.execute({ action: "open_tab", url: "http://127.0.0.1:3000" }, {});
   assert.equal(driver.calls[0].action, "open_tab");
   assert.equal(driver.calls[0].args.url, "http://127.0.0.1:3000");
