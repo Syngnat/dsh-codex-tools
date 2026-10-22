@@ -1,25 +1,37 @@
 [English](<README.md>) | [简体中文](<README.zh-CN.md>)
 
-# Codex Tools for DeepSeek Harness
+# 电脑操控 — computer and browser tools for DeepSeek Harness
 
-Computer use, browser control, cross-session messaging and online self-update as four agent tools, ported from the Codex desktop client.
+Three agent tools that act on this machine — control native apps, drive a Chrome
+window the plugin owns, and message other Harness sessions — plus a fourth that
+updates the plugin from its GitHub releases.
 
-A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). The first two tools ride on the same runtime Codex itself uses; the third is the Harness equivalent of Codex's cross-session messaging; the fourth updates this plugin from its GitHub releases.
+A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+(DSH). Everything runs in the Harness process or in helpers this plugin ships:
+nothing here starts an external desktop client, connects to an MCP server, or
+shells out to PowerShell.
 
-| Tool | What it does | Where it comes from |
+| Tool | What it does | How it works |
 | --- | --- | --- |
-| `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | macOS Accessibility, or Windows UI Automation |
-| `browser` | Lists browsers and tabs, binds one, reads it, clicks, types, navigates | Codex Chrome automation (ChatGPT extension) |
-| `browser_use` | Same actions, defaulting to Codex's in-app browser (`iab`) | Codex Browser / browser-use (IAB) |
-| `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Harness-native services |
-| `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` |
+| `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | `bin/dsh-ax` (macOS Accessibility) or `bin/dsh-uia.exe` (Windows UI Automation, built on first use) |
+| `browser` | Lists the plugin's Chrome windows and their tabs, binds one, reads it, clicks, types, navigates | Chrome DevTools Protocol against a Chrome the plugin launches with its own profile |
+| `browser_use` | Same actions against a second, independent Chrome profile | Same driver, separate profile |
+| `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Host `sessionController` and `workspaceRegistry` |
+| `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` and `jobs` |
 
 ## Requirements
 
-- **macOS or Windows.** `computer_use` on macOS needs Accessibility permission for `bin/dsh-ax`. On Windows the plugin builds `bin/dsh-uia.exe` from its own source the first time it runs, using the C# compiler that comes with Windows. You do not install or choose a PowerShell version.
-- **DSH `>= 0.2.1-rc.1`**, with no future-version ceiling. The plugin checks the Host capabilities it needs before mounting and names any missing one instead of guessing from a version number.
-- **Accessibility and Screen Recording permission** for the app running the Harness, for `computer_use`.
-- **The Codex Chrome extension**, for `browser` against Chrome.
+- **macOS or Windows.** On macOS `computer_use` needs Accessibility permission for
+  `bin/dsh-ax` (and Screen Recording for screenshots). On Windows the plugin builds
+  `bin/dsh-uia.exe` from `native/dsh-uia.cs` the first time it runs, with the C#
+  compiler that ships inside Windows itself (`.NET Framework` 4.x). You do not
+  install a .NET SDK, choose a PowerShell version, or run anything as administrator.
+- **DSH `>= 0.2.1-rc.1`**, with no future-version ceiling. The plugin checks the
+  Host capabilities it needs before mounting and names any missing one instead of
+  guessing from a version number.
+- **No browser extension.** Both browser tools launch their own Chrome; neither
+  attaches to the Chrome you are already using, so nothing is injected into your
+  browsing session.
 
 ## Install
 
@@ -28,7 +40,8 @@ A plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepse
 dsh plugin install github:Syngnat/dsh-codex-tools
 ```
 
-Or, from an agent session, `plugin_manager` with `action: "install_bundle"` and the same spec. A local checkout works too:
+Or, from an agent session, `plugin_manager` with `action: "install_bundle"` and the
+same spec. A local checkout works too:
 
 ```sh
 dsh plugin install /absolute/path/to/dsh-codex-tools
@@ -40,29 +53,34 @@ The plugin registers itself through `cordis.patch.yml`:
 - insert:
     - id: local-codex-tools
       name: '@local/dsh-codex-tools'
-      config:
-        surfaces: computer,browser
+      config: {}
 ```
 
 ## Configuration
 
+Two layers, and they do different things.
+
+**Bundle config** decides which tools exist at all. Set it on the patch row above:
+
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `surfaces` | `computer,browser` | Which Codex providers the runtime binds. Narrow it to `computer` or `browser` to skip the other. |
 | `computerUse` | `true` | Register the `computer_use` tool. |
 | `browser` | `true` | Register the `browser` tool. |
+| `browserUse` | `true` | Register the `browser_use` tool. |
 | `sessionMessaging` | `true` | Register the `session_message` tool. |
-| `browserUse` | `true` | Register the `browser_use` tool (in-app browser).
 | `update` | `true` | Register the `codex_tools_update` tool. |
-| `callTimeoutMs` | `120000` | Per-call deadline for one REPL evaluation. |
-| `codexSessionId` | generated | Stable `session_id` reported in the Codex turn metadata. |
 
-Environment overrides:
+**The settings page** decides what the registered tools are allowed to do. Open it
+from the plugin's own page in the Harness 插件 (Plugins) page. It writes
+`~/.dsh/dsh-codex-tools/settings.json`, and the tools read that file on every call:
 
-| Variable | Meaning |
-| --- | --- |
-| `DSH_CODEX_CUA_NODE` | Absolute path to `cua_node`, when ChatGPT.app is not in `/Applications`. |
-| `DSH_CODEX_APP` | Absolute path to the ChatGPT app bundle. |
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `computerEnabled` | `true` | Master switch for `computer_use`. |
+| `anyApp` | `true` | When off, only apps in `allowedApps` may be driven. |
+| `allowedApps` | `[]` | App names allowed while `anyApp` is off. |
+| `browserEnabled` | `true` | Master switch for `browser`. |
+| `browserUseEnabled` | `true` | Master switch for `browser_use`. |
 
 ## `computer_use`
 
@@ -70,66 +88,54 @@ Actions: `list_apps`, `list_windows`, `get_state`, `click`, `type_text`, `paste`
 `press_key`, `scroll`, `drag`, `set_value`, `select_text`,
 `perform_secondary_action`, `screenshot`.
 
-The workflow mirrors Codex's: discover an app, read its state to get element
-indices, act on an index, then read state again. Element indices are only valid
-for the state they came from, so every action re-reads state unless you pass
-`return_state: false` to batch several actions into one call.
+Discover an app, read its state to get element indices, act on an index, then read
+state again. Element indices are only valid for the state they came from, so every
+mutating action re-reads state unless you pass `return_state: false` to batch
+several actions into one call.
 
 `get_state` returns a **diff** against the previous read by default; pass
 `full_tree: true` when you need the whole tree.
 
-Screenshots are written to a PNG in the system temporary directory and the path
-is returned, so the image can be opened with the ordinary image reader.
-
-### Approvals
-
-The runtime asks the client to approve an app before it will read or drive that
-app's UI, through MCP form elicitation. This plugin answers `accept` by default
-and records every decision in `client.approvalLog`. Set `approval: "deny"` in the
-plugin config to refuse instead.
-
-The upstream confirmation policy — delete data, transmit sensitive data, install
-software, solve CAPTCHAs, change system settings — is a *model* obligation, not
-something the runtime enforces, so it is restated in the tool description.
+Screenshots are written to a PNG in the system temporary directory and the path is
+returned, so the image can be opened with the ordinary image reader.
 
 ### What you see on screen
 
 `computer_use` does not activate the target window and does not move the system
-pointer: on macOS the runtime performs accessibility actions (`AXPress`,
-`AXValue`, …) directly on elements. An operation can succeed on a window that is
-behind another app.
+pointer: the helper performs accessibility actions (`AXPress`, `AXValue`, …) or UI
+Automation patterns directly on elements. An operation can succeed on a window that
+sits behind another app.
 
-The ChatGPT host overlay ("ChatGPT is using your computer") is not drawn,
-because this plugin talks to the runtime directly. The runtime *does* show its
-own small software cursor while an action runs. Codex dismisses that cursor
-with the hidden `turn_ended` tool at the end of a turn; this plugin fires the
-same notification when `computer_use` or `browser` returns, so the cursor does
-not stay on screen afterwards.
+Nothing is drawn over your desktop: there is no host overlay and no floating
+cursor, because the helper is the only participant. Actions that delete data,
+transmit sensitive data, install software, solve CAPTCHAs or change system settings
+are left to the model and the user to agree on — the helper does not enforce a
+policy of its own.
 
 ## `browser`
 
 Actions: `list_browsers`, `list_tabs`, `open_tab`, `get_tab`, `documentation`,
-`state`, `click`, `type_text`, `paste`, `press_key`, `scroll`, `drag`,
-`select_text`, `set_value`, `goto`, `back`, `forward`, `reload`, `close`,
-`screenshot`.
+`state`, `click`, `type_text`, `paste`, `press_key`, `scroll`, `drag`, `select_text`,
+`set_value`, `goto`, `back`, `forward`, `reload`, `close`, `screenshot`.
 
-The plugin launches its own Chrome over the DevTools Protocol. `list_browsers`
-shows the owned windows; `list_tabs` shows tabs; `open_tab` or `get_tab` binds
-one and keeps it bound for later calls.
+The plugin launches its own Chrome over the DevTools Protocol, with a profile under
+`~/.dsh/dsh-codex-tools/browser`. `list_browsers` shows the owned windows;
+`list_tabs` shows tabs; `open_tab` or `get_tab` binds one and keeps it bound for
+later calls.
 
 `state` prints one line per accessibility node with an element id, for example
-`[1234567] button Submit`. Those ids stay valid for that page, so a later
-`state` read does not renumber them, and an id can still be used after the page
-changed. `press_key` takes xdotool-style names (`Return`, `Tab`, `ArrowDown`,
-`super+c`) and chords. `set_value` replaces the field contents instead of
-appending to them.
+`[1234567] button Submit`. Those ids stay valid for that page, so a later `state`
+read does not renumber them. `press_key` takes xdotool-style names (`Return`, `Tab`,
+`ArrowDown`, `super+c`) and chords. `set_value` replaces the field contents instead
+of appending to them.
 
 ## `browser_use`
 
-Same actions as `browser`, but the default browser id is `iab` — Codex's
-in-app browser, the surface Codex itself calls Browser / browser-use. It lives
-inside ChatGPT.app (which must be running). It does **not** attach to your
-Chrome, so Chrome will not show a ChatGPT debugging infobar.
+The same actions against a second Chrome profile under
+`~/.dsh/dsh-codex-tools/browser-use`. Use it when one window should stay in a
+signed-in state while the other stays clean, or when two independent surfaces are
+needed at once: the two windows do not share cookies, storage or tabs, and neither
+of them is your own Chrome.
 
 ```
 browser_use { action: "list_browsers" }
@@ -138,12 +144,11 @@ browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
 
 ## `session_message`
 
+Actions: `list_workspaces`, `list_sessions`, `dispatch`, `create`, `send`, `fork`,
+`rename`.
 
-Actions: `list_workspaces`, `list_sessions`, `dispatch`, `create`, `send`,
-`fork`, `rename`.
-
-`dispatch` is the headline: it creates a session in a target workspace and sends
-it a complete brief in one call.
+`dispatch` is the headline: it creates a session in a target workspace and sends it
+a complete brief in one call.
 
 ```
 session_message {
@@ -161,110 +166,81 @@ sidebar, runs on its own, and can be steered afterwards with `send`.
 `workspace` accepts a workspace id, an absolute path, or part of a title. An
 absolute path that is not registered yet is created as a new workspace.
 
-This tool uses the Host's `sessionController` and `workspaceRegistry` services,
-so it needs no storage access and no Codex runtime.
-
 ## `codex_tools_update`
 
-Actions: `status`, `check`, `install`.
+Actions: `status`, `check`, `install`, `operation`.
 
-Keeps the plugin itself current. The three actions are the three separate steps
-of the flow, and only the last one changes anything:
+Keeps the plugin itself current. The actions are separate steps, and only `install`
+changes anything:
 
 | Action | What it does |
 | --- | --- |
-| `status` | Reports the running version, the last check, and whether this installation can be replaced online. |
+| `status` | Reports the running version, the last check time, and whether this installation can be replaced online. |
 | `check` | Reads the latest stable release from GitHub. Read-only: it downloads and installs nothing. |
 | `install` | Replaces the bundle with the latest release. Requires `confirm: true`. |
+| `operation` | Reads the state of an update job that is already running. |
 
-Ask the user before passing `confirm: true`: the plugin is replaced in place and
-the Harness may need a restart.
+Ask the user before passing `confirm: true`: the plugin is replaced in place.
 
 ### What the install guarantees
 
-- **A fixed source.** The repository, the release endpoint and the install spec
-  are constants in the plugin. No caller-supplied URL, package name, registry or
+- **A fixed source.** The repository, the release endpoint and the install spec are
+  constants in the plugin. No caller-supplied URL, package name, registry or
   version exemption is accepted.
-- **A pinned target.** The release tag is resolved to an immutable commit, and
-  the `package.json` at that commit must declare this package name, this version
-  and a bundle patch. A mismatch aborts before anything is replaced.
+- **A pinned target.** The release tag is resolved to an immutable commit, and the
+  `package.json` at that commit must declare this package name, this version and a
+  bundle patch. A mismatch aborts before anything is replaced.
 - **No install scripts.** A manifest declaring `preinstall`, `install`,
   `postinstall` or `prepare` is refused outright.
-- **Verification after the fact.** Success requires the recorded bundle row to
-  match the pinned commit, not just a manager receipt.
+- **Runs outside the plugin.** The replacement happens inside a Host job that does
+  not belong to the plugin, so removing the plugin mid-flight cannot kill the swap.
+- **Verification after the fact.** Success requires the recorded bundle row to match
+  the pinned commit and the plugin's own route to answer with the new version — not
+  just a manager receipt.
 - **Recovery.** If the replacement fails after the profile has been mutated, the
-  previously running version is reinstalled and re-enabled. If that also fails,
-  the result says so and prints the manual command instead of claiming success.
+  previously running version is reinstalled and re-enabled. If that also fails, the
+  result says so and prints the manual command instead of claiming success.
 - **No foreign overwrite.** An installation another manager caller made in the
   meantime is detected and left alone.
 
 ### What it will not do
 
-Online update only handles an installation that came from this repository. A
-local `link:` checkout, a fork, or a bundle that is not a removable profile
-installation is refused, and `status` names the reason. There is no HTTP route,
-no background polling and no automatic update: nothing happens until the tool is
-called.
-
-## How Codex does it
-
-Codex ships a self-contained Node runtime inside `ChatGPT.app`:
-
-```
-/Applications/ChatGPT.app/Contents/Resources/cua_node/
-  bin/node                                a pinned Node 24 binary
-  bin/node_repl                           the REPL kernel that hosts the cua API
-  lib/node_modules/@oai/cua-repl          the MCP launcher
-  lib/node_modules/@oai/sky               native-app provider (Sky)
-  lib/node_modules/@oai/browser-desktop   browser provider
-```
-
-`@oai/cua-repl`'s launcher spawns `node_repl` with two trusted services bound —
-`@oai/sky/service` for native apps and `@oai/browser-desktop/service` for
-browsers — and speaks MCP over stdio. It exposes four tools: `js`, `js_reset`,
-`js_add_node_module_dir` and `turn_ended`. Everything else is JavaScript: the
-model writes code against a global `cua` object, and the REPL keeps its bindings
-alive between calls so an app or tab stays bound and element indices stay valid.
-
-Two things are easy to get wrong, and this plugin handles both:
-
-- **The runtime must be told where its trusted modules live.** Without
-  `NODE_REPL_NODE_MODULE_DIRS` and `NODE_REPL_TRUSTED_CODE_PATHS` pointing at
-  `cua_node/lib/node_modules`, the kernel dies with *"Trusted RPC package must
-  resolve within a configured trusted module directory"*.
-- **The browser provider requires Codex turn metadata.** Every call must carry
-  `_meta["x-codex-turn-metadata"]` with a `session_id` and a `turn_id`, or the
-  browser service refuses with *"Missing required Codex turn metadata"*.
-
-The standalone `cua mcp` subcommand of `SkyComputerUseClient` is **not** a
-substitute: it waits for an XPC bootstrap handshake from the ChatGPT host and
-times out with `bootstrapTimedOut`. Importing `@oai/sky` directly fails too, with
-*"Sky Computer Use requires the trusted nodeRepl runtime"*. The `cua-repl`
-launcher is the only supported standalone entry point.
-
-Full findings, including the dead ends, are in [docs/implementation.md](<docs/implementation.md>).
+Online update only handles an installation that came from this repository. A local
+`link:` checkout, a fork, or a bundle that is not a removable profile installation
+is refused, and `status` names the reason. There is no HTTP polling and no automatic
+update: nothing happens until the tool is called.
 
 ## Layout
 
 ```
-index.js                 plugin entry: apply / inject, registers the four tools
-lib/cua-repl-client.mjs  MCP stdio client for the Codex REPL server
+index.js                 plugin entry: apply / inject, registers the tools
+client-entry.js          the settings page source the client half is built from
+client.js                built client half (esbuild output)
+lib/ax-client.mjs        JSON-line client for the computer-use helper
 lib/computer-tool.mjs    computer_use
-lib/browser-tool.mjs     browser
+lib/cdp-browser.mjs      Chrome DevTools Protocol driver
+lib/browser-tool.mjs     browser and browser_use
 lib/session-tool.mjs     session_message
 lib/update-tool.mjs      codex_tools_update
-lib/update-service.mjs   GitHub release check and bundle replacement
-lib/version.mjs          strict stable-version helpers
+lib/update-service.mjs   GitHub release check
+lib/online-update.mjs    in-place bundle replacement
+lib/update-host.mjs      update route for the settings page
+lib/settings-store.mjs   settings file the page writes
+lib/settings-host.mjs    settings route for the settings page
+lib/owned-data.mjs       data the page owns besides the switches
 lib/define-tool.mjs      dependency-free defineTool
+lib/format-time.mjs      timestamp formatting for the settings page
+lib/version.mjs          strict stable-version helpers
 cordis.patch.yml         bundle patch
-docs/implementation.md   reverse-engineering report
+native/                  computer-use helper sources (Swift, C#)
+bin/                     compiled computer-use helpers
+docs/architecture.md     how the pieces fit together
 ```
 
 ## Development
 
 ```sh
-npm test          # 50 offline tests, no Codex runtime needed
-npm run test:live # 5 live tests, needs ChatGPT.app
+npm test    # offline suite, no permissions or browsers needed
 ```
 
 `lib/*.mjs` is not covered by the Harness HMR watcher. After editing a module,
@@ -274,6 +250,11 @@ remount the plugin so the running instance picks the change up:
 plugin_manager { action: "set_plugin", target: "include:local-codex-tools", enabled: false }
 plugin_manager { action: "set_plugin", target: "include:local-codex-tools", enabled: true }
 ```
+
+Rebuild the client half after editing `client-entry.js`: bundle it with esbuild as
+CommonJS for the browser, keeping the module-loader wrapper the Harness expects
+(`window.__ModuleLoader__.load({ id: "@local/dsh-codex-tools", factory(require) { … } })`,
+with `react`, `react-dom`, `react-dom/client` and `@deepseek-ai/*` left external).
 
 ## License
 

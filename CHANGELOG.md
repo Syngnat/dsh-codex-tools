@@ -4,6 +4,17 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.27] - 2026-10-22
+
+### Removed
+
+- The MCP stdio client for an external desktop runtime (`lib/cua-repl-client.mjs`) and the live suite that drove it. The plugin's tools are native and in-process; nothing has used that module since computer use moved to its own helper.
+- The dead `cua` REPL action builders in `lib/computer-tool.mjs` and `lib/browser-tool.mjs` (−334 lines), and the `surfaces` bundle option, which the plugin stopped reading.
+
+### Fixed
+
+- README and architecture docs described behaviour the code no longer has (an in-app browser, a Chrome extension requirement, MCP approvals, Codex-specific env vars). They now describe what the plugin actually does: a helper per platform, two Chrome profiles the plugin owns, and the settings page as the only configuration surface.
+
 ## [2.0.26] - 2026-10-21
 
 ### Changed

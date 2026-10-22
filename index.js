@@ -2,7 +2,7 @@
  * Computer use, an owned Chrome window, cross-session messaging, and online
  * update. Computer use is `bin/dsh-ax` on macOS and `bin/dsh-uia.exe` on Windows. The browsers
  * are Chrome windows this plugin launches over the DevTools Protocol, each
- * with its own profile. Neither path starts Codex or ChatGPT.
+ * with its own profile. Neither path starts an external desktop client.
  *
  * Cross-session messaging uses the Host's `sessionController` and
  * `workspaceRegistry`. Online update uses the Host's `pluginManager`.

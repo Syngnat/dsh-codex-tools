@@ -1,25 +1,24 @@
 [English](<README.md>) | [简体中文](<README.zh-CN.md>)
 
-# DeepSeek Harness 的 Codex 工具
+# 电脑操控 — DeepSeek Harness 的电脑与浏览器工具
 
-把 Codex 桌面端的三项能力做成 Agent 工具，并加上插件自身的在线更新：computer use、浏览器操作、跨会话发消息、在线更新。
+三个真正动这台机器的 Agent 工具——操作原生 App、驱动插件自己的 Chrome 窗口、给其他 Harness 会话发消息——外加一个从 GitHub Release 更新插件自己的工具。
 
-这是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的插件包。前两个工具直接复用 Codex 自己在用的那套运行时；第三个是 Harness 原生的跨会话消息能力；第四个从本仓库的 GitHub Release 更新插件自己。
+这是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的插件包。全部逻辑都跑在 Harness 进程里或本插件自带的辅助程序里：不启动任何外部桌面客户端、不连 MCP 服务器、不调 PowerShell。
 
-| 工具 | 做什么 | 来源 |
+| 工具 | 做什么 | 实现方式 |
 | --- | --- | --- |
-| `computer_use` | 通过无障碍树和截图读写原生 App | macOS 辅助功能，或 Windows UI Automation |
-| `browser` | 列出浏览器与标签页、绑定一个、读取、点击、输入、导航 | Codex 的 Chrome 自动化（ChatGPT 扩展） |
-| `browser_use` | 同样的动作，默认走 Codex 应用内浏览器（`iab`） | Codex 的 Browser / browser-use（IAB） |
-| `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Harness 原生服务 |
-| `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host `pluginManager` |
+| `computer_use` | 通过无障碍树和截图读写原生 App | macOS 用 `bin/dsh-ax`（辅助功能）；Windows 用 `bin/dsh-uia.exe`（UI Automation，首次使用时现编译） |
+| `browser` | 列出插件自己的 Chrome 窗口与标签页、绑定一个、读取、点击、输入、导航 | 用 Chrome DevTools 协议驱动插件自己拉起的 Chrome（独立 profile） |
+| `browser_use` | 同样的动作，但用第二个独立 Chrome profile | 同一个驱动，另一个 profile |
+| `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Host 的 `sessionController` 与 `workspaceRegistry` |
+| `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host 的 `pluginManager` 与 `jobs` |
 
 ## 环境要求
 
-- **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限。Windows 上插件第一次运行时用系统自带的 C# 编译器，把自己的源码编成 `bin/dsh-uia.exe`。不用安装，也不用指定 PowerShell 版本。
+- **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限，截图另需屏幕录制权限。Windows 上插件第一次调用时才用 `native/dsh-uia.cs` 编出 `bin/dsh-uia.exe`，用的是 Windows 自带的 .NET Framework 4.x 里的 `csc.exe`——不需要装 .NET SDK、不需要指定 PowerShell 版本、不需要管理员权限。
 - **DSH `>= 0.2.1-rc.1`**，不设未来版本上限。插件在挂载前检查所需的 Host 能力，缺哪个就报哪个名字，不靠版本号猜。
-- **辅助功能与屏幕录制权限**（授予运行 Harness 的那个 App），`computer_use` 需要。
-- **Codex 的 Chrome 扩展**，`browser` 操作 Chrome 时需要。
+- **不需要浏览器扩展。** 两个浏览器工具都拉起自己的 Chrome，**不会**挂到你正在用的 Chrome 上，所以不会往你的浏览会话里注入任何东西。
 
 ## 安装
 
@@ -40,29 +39,32 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 - insert:
     - id: local-codex-tools
       name: '@local/dsh-codex-tools'
-      config:
-        surfaces: computer,browser
+      config: {}
 ```
 
 ## 配置
 
+两层，作用不同。
+
+**Bundle 配置**决定「注册哪些工具」。写在上面那行 patch 的 `config` 里：
+
 | 键 | 默认值 | 含义 |
 | --- | --- | --- |
-| `surfaces` | `computer,browser` | 运行时绑定哪些 Codex provider。可只留 `computer` 或 `browser`。 |
-| `computerUse` | `true` | 是否注册 `computer_use` 工具。 |
-| `browser` | `true` | 是否注册 `browser` 工具。 |
-| `sessionMessaging` | `true` | 是否注册 `session_message` 工具。 |
-| `browserUse` | `true` | 是否注册 `browser_use` 工具（应用内浏览器）。 |
-| `update` | `true` | 是否注册 `codex_tools_update` 工具。 |
-| `callTimeoutMs` | `120000` | 单次 REPL 求值的超时。 |
-| `codexSessionId` | 自动生成 | Codex turn metadata 里上报的固定 `session_id`。 |
+| `computerUse` | `true` | 是否注册 `computer_use`。 |
+| `browser` | `true` | 是否注册 `browser`。 |
+| `browserUse` | `true` | 是否注册 `browser_use`。 |
+| `sessionMessaging` | `true` | 是否注册 `session_message`。 |
+| `update` | `true` | 是否注册 `codex_tools_update`。 |
 
-环境变量覆盖：
+**设置页**决定「已注册的工具被允许做什么」。从 Harness 插件页里本插件自己的页面打开。它写 `~/.dsh/dsh-codex-tools/settings.json`，工具每次调用都读这个文件：
 
-| 变量 | 含义 |
-| --- | --- |
-| `DSH_CODEX_CUA_NODE` | `cua_node` 的绝对路径，ChatGPT.app 不在 `/Applications` 时使用。 |
-| `DSH_CODEX_APP` | ChatGPT App bundle 的绝对路径。 |
+| 设置 | 默认值 | 含义 |
+| --- | --- | --- |
+| `computerEnabled` | `true` | `computer_use` 总开关。 |
+| `anyApp` | `true` | 关闭后只允许操作 `allowedApps` 里的 App。 |
+| `allowedApps` | `[]` | `anyApp` 关闭时允许的 App 名单。 |
+| `browserEnabled` | `true` | `browser` 总开关。 |
+| `browserUseEnabled` | `true` | `browser_use` 总开关。 |
 
 ## `computer_use`
 
@@ -70,31 +72,17 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 `press_key`、`scroll`、`drag`、`set_value`、`select_text`、
 `perform_secondary_action`、`screenshot`。
 
-工作流与 Codex 一致：先发现 App，再读状态拿到元素索引，对索引执行动作，然后重新读状态。
-元素索引只对产生它的那次状态有效，所以每个动作默认都会重新读一次状态；
-要连续批量操作时传 `return_state: false` 关掉。
+先发现 App，再读状态拿到元素索引，对索引执行动作，然后重新读状态。元素索引只对产生它的那次状态有效，所以每个会改变界面的动作默认都会重新读一次状态；要连续批量操作时传 `return_state: false` 关掉。
 
 `get_state` 默认返回相对上次的 **diff**；需要完整树时传 `full_tree: true`。
 
 截图会写到系统临时目录的 PNG 并返回路径，用普通图片读取工具打开即可。
 
-### 审批
-
-运行时在读取或操作某个 App 之前，会通过 MCP form elicitation 请求客户端批准。
-本插件默认回 `accept`，并把每次决定记在 `client.approvalLog`。
-要改成拒绝，在插件配置里设 `approval: "deny"`。
-
-上游的确认策略（删除数据、传输敏感数据、安装软件、解验证码、改系统设置）是**模型**的义务，
-运行时并不强制，所以这段要求被写进了工具描述里。
-
 ### 屏幕上你会看到什么
 
-`computer_use` 不激活目标窗口，也不移动系统鼠标指针：macOS 上运行时直接对元素执行无障碍动作
-（`AXPress`、`AXValue` 等）。被压在别的 App 后面的窗口也能操作成功。
+`computer_use` 不激活目标窗口，也不移动系统鼠标指针：辅助程序直接对元素执行无障碍动作（`AXPress`、`AXValue` 等）或 UI Automation 模式。被压在别的 App 后面的窗口也能操作成功。
 
-「ChatGPT is using your computer」那个宿主浮层不会出现，因为本插件直接连运行时。
-但运行时自己会在动作期间画一个很小的软件光标。Codex 在一轮结束时用隐藏的 `turn_ended`
-工具把它收掉；本插件在 `computer_use` / `browser` 返回时发同样的通知，所以光标不会留在屏幕上。
+不会往你桌面上画任何东西：没有宿主浮层，也没有漂浮光标，因为整条链路只有本插件的辅助程序在参与。删除数据、传输敏感数据、安装软件、解验证码、改系统设置这些确认，是**模型**与用户之间要商量的事，辅助程序不另外施加一套策略。
 
 ## `browser`
 
@@ -103,16 +91,13 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 `select_text`、`set_value`、`goto`、`back`、`forward`、`reload`、`close`、
 `screenshot`。
 
-插件自己通过 DevTools 协议拉起一个 Chrome。`list_browsers` 看自己开的窗口，
-`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
+插件通过 DevTools 协议拉起自己的 Chrome，profile 在 `~/.dsh/dsh-codex-tools/browser`。`list_browsers` 看自己开的窗口，`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
 
-`state` 每个无障碍节点打印一行，格式是 `[1234567] button Submit`。这个编号在同一个页面里保持有效，
-之后再读一次 `state` 不会重新编号，页面变了也能继续用旧的编号。`press_key` 接受 xdotool 风格的
-按键名（`Return`、`Tab`、`ArrowDown`、`super+c`）和组合键。`set_value` 是替换输入框里的内容，不是追加。
+`state` 每个无障碍节点打印一行，格式是 `[1234567] button Submit`。这个编号在同一个页面里保持有效，之后再读一次 `state` 不会重新编号。`press_key` 接受 xdotool 风格的按键名（`Return`、`Tab`、`ArrowDown`、`super+c`）和组合键。`set_value` 是替换输入框里的内容，不是追加。
 
 ## `browser_use`
 
-动作与 `browser` 相同，但默认浏览器 id 是 `iab` —— 也就是 Codex 自己叫 Browser / browser-use 的那条面。它在 ChatGPT.app 里面（应用必须在跑）。**不会**挂到你的 Chrome 上，所以 Chrome 不会出现「ChatGPT 正在调试」那条黄条。
+同样的动作，但用 `~/.dsh/dsh-codex-tools/browser-use` 这个第二个 profile。适合「一个窗口保持登录、另一个保持干净」，或者同时需要两个互不干扰的界面：两个窗口之间不共享 cookie、存储和标签页，也都不是你自己的 Chrome。
 
 ```
 browser_use { action: "list_browsers" }
@@ -120,7 +105,6 @@ browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
 ```
 
 ## `session_message`
-
 
 动作：`list_workspaces`、`list_sessions`、`dispatch`、`create`、`send`、
 `fork`、`rename`。
@@ -136,107 +120,80 @@ session_message {
 }
 ```
 
-目标会话看不到发起方的对话，所以简报必须自包含。
-建出来的会话就是普通 Harness 会话：出现在侧边栏、独立运行，之后可以用 `send` 继续指挥。
+目标会话看不到发起方的对话，所以简报必须自包含。建出来的会话就是普通 Harness 会话：出现在侧边栏、独立运行，之后可以用 `send` 继续指挥。
 
 `workspace` 接受工作区 id、绝对路径或标题片段。尚未注册的绝对路径会被建成新工作区。
 
-这个工具用的是 Host 的 `sessionController` 和 `workspaceRegistry` 服务，
-不碰存储格式，也不需要 Codex 运行时。
-
 ## `codex_tools_update`
 
-动作：`status`、`check`、`install`。
+动作：`status`、`check`、`install`、`operation`。
 
-用来更新插件自己。三个动作就是流程的三个独立阶段，只有最后一个会改变任何东西：
+用来更新插件自己。这几个动作是流程里各自独立的一步，只有 `install` 会改变任何东西：
 
 | 动作 | 做什么 |
 | --- | --- |
-| `status` | 报告当前运行版本、上次检查结果，以及这个安装能否在线替换。 |
+| `status` | 报告当前运行版本、上次检查时间，以及这个安装能否在线替换。 |
 | `check` | 从 GitHub 读最新稳定版。只读：不下载、不安装任何东西。 |
 | `install` | 用最新版替换 bundle。必须传 `confirm: true`。 |
+| `operation` | 读取已经在跑的更新任务的状态。 |
 
-传 `confirm: true` 之前先问用户：插件是原地替换，Harness 可能需要重启。
+传 `confirm: true` 之前先问用户：插件是原地替换。
 
 ### 安装保证什么
 
 - **来源固定。** 仓库、发布接口、安装 spec 都是插件里的常量。不接受调用方传入的 URL、包名、registry 或版本豁免。
 - **目标钉死。** 发布 tag 会解析成不可变 commit，并且该 commit 下的 `package.json` 必须声明本包名、本版本号和 bundle patch。不匹配就在替换任何东西之前中止。
 - **不跑安装脚本。** 声明了 `preinstall`、`install`、`postinstall` 或 `prepare` 的清单直接拒绝。
-- **事后核对。** 成功要求记录的 bundle 行与钉死的 commit 一致，而不只是管理器回执。
+- **在插件之外执行。** 替换放在一个不属于插件的 Host 任务里跑，所以插件中途被卸载也杀不掉这次替换。
+- **事后核对。** 成功要求记录的 bundle 行与钉死的 commit 一致，并且本插件自己的路由回报的就是新版本——不只是管理器回执。
 - **可恢复。** 如果 profile 已被改动之后替换失败，会重新安装并启用原来运行的版本。恢复也失败时会明说，并打印手动命令，而不是谎报成功。
 - **不覆盖外来安装。** 期间被其他管理器调用者装上的版本会被识别出来并放过。
 
 ### 它不会做什么
 
-在线更新只处理来自本仓库的安装。本地 `link:` 检出、fork，或不是可移除 profile 安装的 bundle 一律拒绝，`status` 会说明原因。没有 HTTP 路由、没有后台轮询、不会自动更新：不调用这个工具就什么都不会发生。
-
-## Codex 是怎么做的
-
-Codex 在 `ChatGPT.app` 里自带一套 Node 运行时：
-
-```
-/Applications/ChatGPT.app/Contents/Resources/cua_node/
-  bin/node                                固定版本的 Node 24
-  bin/node_repl                           承载 cua API 的 REPL 内核
-  lib/node_modules/@oai/cua-repl          MCP launcher
-  lib/node_modules/@oai/sky               原生 App provider（Sky）
-  lib/node_modules/@oai/browser-desktop   浏览器 provider
-```
-
-`@oai/cua-repl` 的 launcher 把 `node_repl` 拉起来，绑定两个 trusted service
-（`@oai/sky/service` 管原生 App，`@oai/browser-desktop/service` 管浏览器），
-然后自己作为 MCP server 通过 stdio 通信。它只暴露四个工具：
-`js`、`js_reset`、`js_add_node_module_dir`、`turn_ended`。其余全是 JavaScript：
-模型对着全局 `cua` 对象写代码，REPL 持久化，所以 App 或标签页的绑定和元素索引跨调用有效。
-
-两个很容易踩错、本插件都处理了的点：
-
-- **必须告诉运行时它的 trusted 模块在哪。** 不设 `NODE_REPL_NODE_MODULE_DIRS` 和
-  `NODE_REPL_TRUSTED_CODE_PATHS` 指向 `cua_node/lib/node_modules`，内核会直接死：
-  *"Trusted RPC package must resolve within a configured trusted module directory"*。
-- **浏览器 provider 要求 Codex turn metadata。** 每次调用都要带
-  `_meta["x-codex-turn-metadata"]`（含 `session_id` 和 `turn_id`），否则浏览器服务拒答：
-  *"Missing required Codex turn metadata"*。
-
-`SkyComputerUseClient` 自带的 `cua mcp` 子命令**不能**替代：
-它等的是 ChatGPT 宿主的 XPC bootstrap 握手，单独跑只会 `bootstrapTimedOut`。
-直接 `import("@oai/sky")` 同样不行，会报
-*"Sky Computer Use requires the trusted nodeRepl runtime"*。
-`cua-repl` launcher 是目前唯一可独立运行的入口。
-
-完整结论（含走过的死路）见 [docs/implementation.md](<docs/implementation.md>)。
+在线更新只处理来自本仓库的安装。本地 `link:` 检出、fork，或不是可移除 profile 安装的 bundle 一律拒绝，`status` 会说明原因。没有后台轮询、不会自动更新：不调用这个工具就什么都不会发生。
 
 ## 目录结构
 
 ```
-index.js                 插件入口：apply / inject，注册四个工具
-lib/cua-repl-client.mjs  Codex REPL server 的 MCP stdio 客户端
+index.js                 插件入口：apply / inject，注册工具
+client-entry.js          设置页源码（client 半侧的构建输入）
+client.js                构建后的 client 半侧（esbuild 产物）
+lib/ax-client.mjs        电脑操控辅助程序的 JSON 行客户端
 lib/computer-tool.mjs    computer_use
-lib/browser-tool.mjs     browser
+lib/cdp-browser.mjs      Chrome DevTools 协议驱动
+lib/browser-tool.mjs     browser 与 browser_use
 lib/session-tool.mjs     session_message
 lib/update-tool.mjs      codex_tools_update
-lib/update-service.mjs   GitHub 发布检查与 bundle 替换
-lib/version.mjs          严格稳定版本号
+lib/update-service.mjs   GitHub 发布检查
+lib/online-update.mjs    原地替换 bundle
+lib/update-host.mjs      设置页的更新路由
+lib/settings-store.mjs   设置页写入的设置文件
+lib/settings-host.mjs    设置页的设置路由
+lib/owned-data.mjs       设置页拥有的开关之外的数据
 lib/define-tool.mjs      零依赖的 defineTool
+lib/format-time.mjs      设置页的时间格式化
+lib/version.mjs          严格稳定版本号
 cordis.patch.yml         bundle patch
-docs/implementation.md   逆向报告
+native/                  电脑操控辅助程序源码（Swift、C#）
+bin/                     编译好的电脑操控辅助程序
+docs/architecture.md     各部件如何拼在一起
 ```
 
 ## 开发
 
 ```sh
-npm test          # 50 项离线测试，不需要 Codex 运行时
-npm run test:live # 5 项 live 测试，需要 ChatGPT.app
+npm test    # 离线测试，不需要任何权限或浏览器
 ```
 
-`lib/*.mjs` 不在 Harness 的 HMR 监听范围内。改完模块后要重挂插件，
-运行中的实例才会用上新代码：
+`lib/*.mjs` 不在 Harness 的 HMR 监听范围内。改完模块后要重挂插件，运行中的实例才会用上新代码：
 
 ```
 plugin_manager { action: "set_plugin", target: "include:local-codex-tools", enabled: false }
 plugin_manager { action: "set_plugin", target: "include:local-codex-tools", enabled: true }
 ```
+
+改完 `client-entry.js` 要重新构建 client 半侧：用 esbuild 打成浏览器用的 CommonJS，保留 Harness 要求的模块加载包装（`window.__ModuleLoader__.load({ id: "@local/dsh-codex-tools", factory(require) { … } })`），并把 `react`、`react-dom`、`react-dom/client`、`@deepseek-ai/*` 保持为 external。
 
 ## 许可
 

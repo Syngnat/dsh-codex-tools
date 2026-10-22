@@ -1,5 +1,4 @@
 - insert:
     - id: local-codex-tools
       name: '@local/dsh-codex-tools'
-      config:
-        surfaces: computer,browser
+      config: {}
