@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.29] - 2026-10-23
+
+### Changed
+
+- `browser` and `browser_use` are one tool again. Both drove the same Chrome through the DevTools Protocol and differed only by profile, so the second registration duplicated the schema in the model context. The remaining `browser` tool keeps the profile at `~/.dsh/dsh-codex-tools/browser`. The retired `browser-use` profile is left on disk; clearing browsing data removes it. The bundle option `browserUse` and the setting `browserUseEnabled` are gone; `browser` and `browserEnabled` cover the one window.
+
 ## [2.0.28] - 2026-10-23
 
 ### Changed

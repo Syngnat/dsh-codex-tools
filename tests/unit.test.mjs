@@ -19,7 +19,7 @@ import { join } from "node:path";
 import { browserDenial, computerDenial, normalizeSettings } from "../lib/settings-store.mjs";
 import { extensionLaunchFlags, isExcelApp, listPasswordSummaries, presentUrl, savePassword, useDataRoot } from "../lib/owned-data.mjs";
 import { createComputerTool } from "../lib/computer-tool.mjs";
-import { createBrowserTool, createBrowserUseTool } from "../lib/browser-tool.mjs";
+import { createBrowserTool } from "../lib/browser-tool.mjs";
 import { apply, inject } from "../index.js";
 
 /** A context that records registrations and serves no services. */
@@ -74,12 +74,11 @@ test("defineTool produces a registry-ready definition", () => {
   assert.deepEqual(definition.output.render({}, "x"), [{ type: "text", text: "x" }]);
 });
 
-test("apply registers exactly the five tools", () => {
+test("apply registers exactly the four tools", () => {
   const ctx = fakeContext();
   apply(ctx, {});
   assert.deepEqual([...ctx.registered.keys()].sort(), [
     "browser",
-    "browser_use",
     "codex_tools_update",
     "computer_use",
     "session_message",
@@ -88,7 +87,7 @@ test("apply registers exactly the five tools", () => {
 
 test("apply honours the per-tool disable switches", () => {
   const ctx = fakeContext();
-  apply(ctx, { computerUse: false, browser: false, browserUse: false, update: false });
+  apply(ctx, { computerUse: false, browser: false, update: false });
   assert.deepEqual([...ctx.registered.keys()], ["session_message"]);
 });
 
@@ -401,17 +400,6 @@ test("list actions reach the local backends and never a Codex runtime", async ()
   assert.deepEqual(driver.calls.map((call) => call.action), ["list_browsers"]);
 });
 
-test("browser_use opens a tab through its own driver", async () => {
-  const driver = recordingBackend();
-  const tool = createBrowserUseTool({ driver, defineTool });
-  assert.equal(tool.name, "browser_use");
-  await tool.execute({ action: "open_tab", url: "http://127.0.0.1:3000" }, {});
-  assert.equal(driver.calls[0].action, "open_tab");
-  assert.equal(driver.calls[0].args.url, "http://127.0.0.1:3000");
-  await tool.execute({ action: "list_tabs" }, {});
-  assert.equal(driver.calls[1].action, "list_tabs");
-});
-
 test("browser open_tab does not require a Codex browser id", async () => {
   const driver = recordingBackend();
   const tool = createBrowserTool({ driver, defineTool });
@@ -469,7 +457,6 @@ test("settings keep only the computer and browser switches", () => {
   assert.equal(settings.anyApp, false);
   assert.deepEqual(settings.allowedApps, ["Safari"]);
   assert.equal(settings.browserEnabled, false);
-  assert.equal(settings.browserUseEnabled, true);
   assert.equal(settings.fullCdp, true);
   assert.equal(settings.showFullUrl, true);
 });
@@ -481,10 +468,9 @@ test("computer use refuses an app that is not always allowed", () => {
   assert.equal(computerDenial(normalizeSettings({ computerEnabled: false }), "Safari"), "电脑操作已在设置里关闭。");
 });
 
-test("each browser window can be closed from settings", () => {
-  const settings = normalizeSettings({ browserUseEnabled: false });
-  assert.equal(browserDenial(settings, "browser"), null);
-  assert.equal(browserDenial(settings, "browser-use"), "浏览器已在设置里关闭。");
+test("the browser window can be closed from settings", () => {
+  assert.equal(browserDenial(normalizeSettings({ browserEnabled: false })), "浏览器已在设置里关闭。");
+  assert.equal(browserDenial(normalizeSettings({})), null);
 });
 
 test("Excel and the lock screen are real permissions", () => {

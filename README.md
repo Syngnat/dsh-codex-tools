@@ -14,8 +14,7 @@ shells out to PowerShell.
 | Tool | What it does | How it works |
 | --- | --- | --- |
 | `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | `bin/dsh-ax` (macOS Accessibility) or `bin/dsh-uia.exe` (Windows UI Automation, built on first use) |
-| `browser` | Lists the plugin's Chrome windows and their tabs, binds one, reads it, clicks, types, navigates | Chrome DevTools Protocol against a Chrome the plugin launches with its own profile |
-| `browser_use` | Same actions against a second, independent Chrome profile | Same driver, separate profile |
+| `browser` | Lists the plugin's Chrome window and its tabs, binds one, reads it, clicks, types, navigates | Chrome DevTools Protocol against a Chrome the plugin launches with its own profile |
 | `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Host `sessionController` and `workspaceRegistry` |
 | `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` and `jobs` |
 
@@ -29,8 +28,8 @@ shells out to PowerShell.
 - **DSH `>= 0.2.1-rc.1`**, with no future-version ceiling. The plugin checks the
   Host capabilities it needs before mounting and names any missing one instead of
   guessing from a version number.
-- **No browser extension.** Both browser tools launch their own Chrome; neither
-  attaches to the Chrome you are already using, so nothing is injected into your
+- **No browser extension.** The browser tool launches its own Chrome and does
+  not attach to the Chrome you are already using, so nothing is injected into your
   browsing session.
 
 ## Install
@@ -66,7 +65,6 @@ Two layers, and they do different things.
 | --- | --- | --- |
 | `computerUse` | `true` | Register the `computer_use` tool. |
 | `browser` | `true` | Register the `browser` tool. |
-| `browserUse` | `true` | Register the `browser_use` tool. |
 | `sessionMessaging` | `true` | Register the `session_message` tool. |
 | `update` | `true` | Register the `codex_tools_update` tool. |
 
@@ -80,7 +78,6 @@ from the plugin's own page in the Harness 插件 (Plugins) page. It writes
 | `anyApp` | `true` | When off, only apps in `allowedApps` may be driven. |
 | `allowedApps` | `[]` | App names allowed while `anyApp` is off. |
 | `browserEnabled` | `true` | Master switch for `browser`. |
-| `browserUseEnabled` | `true` | Master switch for `browser_use`. |
 
 ## `computer_use`
 
@@ -118,29 +115,15 @@ Actions: `list_browsers`, `list_tabs`, `open_tab`, `get_tab`, `documentation`,
 `state`, `click`, `type_text`, `paste`, `press_key`, `scroll`, `drag`, `select_text`,
 `set_value`, `goto`, `back`, `forward`, `reload`, `close`, `screenshot`.
 
-The plugin launches its own Chrome over the DevTools Protocol, with a profile under
-`~/.dsh/dsh-codex-tools/browser`. `list_browsers` shows the owned windows;
-`list_tabs` shows tabs; `open_tab` or `get_tab` binds one and keeps it bound for
-later calls.
+The plugin launches one Chrome window over the DevTools Protocol, with its profile
+at `~/.dsh/dsh-codex-tools/browser`. `list_browsers` names that window; `list_tabs`
+shows its tabs; `open_tab` or `get_tab` binds one and keeps it bound for later calls.
 
 `state` prints one line per accessibility node with an element id, for example
 `[1234567] button Submit`. Those ids stay valid for that page, so a later `state`
 read does not renumber them. `press_key` takes xdotool-style names (`Return`, `Tab`,
 `ArrowDown`, `super+c`) and chords. `set_value` replaces the field contents instead
 of appending to them.
-
-## `browser_use`
-
-The same actions against a second Chrome profile under
-`~/.dsh/dsh-codex-tools/browser-use`. Use it when one window should stay in a
-signed-in state while the other stays clean, or when two independent surfaces are
-needed at once: the two windows do not share cookies, storage or tabs, and neither
-of them is your own Chrome.
-
-```
-browser_use { action: "list_browsers" }
-browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
-```
 
 ## `session_message`
 
@@ -219,7 +202,7 @@ client.js                built client half (esbuild output)
 lib/ax-client.mjs        JSON-line client for the computer-use helper
 lib/computer-tool.mjs    computer_use
 lib/cdp-browser.mjs      Chrome DevTools Protocol driver
-lib/browser-tool.mjs     browser and browser_use
+lib/browser-tool.mjs     browser
 lib/session-tool.mjs     session_message
 lib/update-tool.mjs      codex_tools_update
 lib/update-service.mjs   GitHub release check
