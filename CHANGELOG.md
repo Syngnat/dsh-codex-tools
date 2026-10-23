@@ -4,6 +4,12 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.30] - 2026-10-23
+
+### Removed
+
+- The 插件-page 「打开设置」 button. The settings live in the Harness settings dialog's own navigation (设置 → 电脑操控), so the extra entry point is no longer needed.
+
 ## [2.0.29] - 2026-10-23
 
 ### Changed

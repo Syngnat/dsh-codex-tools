@@ -504,12 +504,12 @@ test("extension flags, visible URLs, and saved logins stay out of the summary", 
 });
 
 
-test("the settings page leaves the sidebar and opens from the plugin's own page", () => {
+test("the settings page lives in the settings dialog and the main panel, with no sidebar row", () => {
   const source = readFileSync(new URL("../client-entry.js", import.meta.url), "utf8");
-  // The sidebar keeps one row for the app; the settings open from the plugin's
-  // own page in the Plugins page.
+  // The sidebar keeps one row for the app; the settings open from the settings
+  // dialog's own navigation, and the plugin-page button is gone.
   assert.doesNotMatch(source, /sidebar\.panellist/);
-  assert.match(source, /plugins\.detail\.actions/);
+  assert.doesNotMatch(source, /plugins\.detail\.actions/);
+  assert.match(source, /settings\.section/);
   assert.match(source, /name: "main",\s*\n\s*key: "dsh-codex-tools"/);
-  assert.match(source, /selectPanel\("dsh-codex-tools"\)/);
 });

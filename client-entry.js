@@ -117,7 +117,6 @@ const COPY = {
     releaseNotes: "更新说明",
     swapHint: "安装时插件会先卸载自己再装回来，页面可能短暂消失；回来后这里会显示结果。",
     notChecked: "还没有检查过",
-    openSettings: "打开设置",
     lastCheck: "上次检查",
     replacing: "插件正在替换中…",
     phaseLabels: {
@@ -186,17 +185,6 @@ const nameStyle = { fontSize: 15, fontWeight: 600 };
 const descStyle = { marginTop: 3, fontSize: 13, lineHeight: 1.4, color: "var(--dsw-alias-label-secondary, #5c6570)" };
 const hairline = { height: 1, background: "var(--dsw-alias-border-l2, #e4e4e4)" };
 const controlStyle = { height: 30, padding: "0 12px", borderRadius: 8, border: 0, background: "var(--dsw-alias-interactive-bg-hover, #f2f3f5)", color: "inherit", cursor: "pointer" };
-const actionStyle = {
-  height: 28,
-  padding: "0 12px",
-  borderRadius: 8,
-  border: "1px solid var(--dsw-alias-border-l2, #d5d8dd)",
-  background: "var(--dsw-alias-bg-layer-1, #ffffff)",
-  color: "var(--dsw-alias-label-primary, #1a1a1a)",
-  font: "inherit",
-  fontSize: 13,
-  cursor: "pointer",
-};
 
 function Switch({ checked, label, disabled, onChange }) {
   return h("button", {
@@ -503,36 +491,8 @@ function UpdatePanel({ text }) {
 
 export const inject = ["slots", "layout", "locale"];
 
-/** The package name the Plugins page lists this plugin under. */
-const PACKAGE_NAME = "@local/dsh-codex-tools";
-/** The row id this plugin's patch declares. */
-const ROW_ID = "local-codex-tools";
-
-/**
- * Whether the open detail page belongs to this plugin.
- * @param subject - The page's subject.
- * @returns True for this plugin's own bundle and row pages.
- */
-function isOwnPage(subject) {
-  if (subject?.kind === "bundle") return subject.pkg?.name === PACKAGE_NAME;
-  if (subject?.kind === "row") return subject.row?.rowId === ROW_ID;
-  return false;
-}
-
 export function apply(ctx) {
   const label = () => "电脑操控";
-  // The settings live on this plugin's own page in the Plugins page, so the
-  // sidebar keeps one row for the app instead of one row per plugin.
-  ctx.slots.inject("plugins.detail.actions", () => ctx.slots.register({
-    name: "plugins.detail.actions", id: "dsh-codex-tools-open", order: 100, label,
-  }, ({ subject }) => {
-    if (!isOwnPage(subject)) return null;
-    return h("button", {
-      type: "button",
-      style: actionStyle,
-      onClick: () => ctx.layout.selectPanel("dsh-codex-tools"),
-    }, COPY.zh.openSettings);
-  }));
   // The same page also opens from the settings dialog's own nav, so the
   // settings are one click away instead of buried under the Plugins page.
   ctx.slots.inject("settings.section", () => ctx.slots.register({
