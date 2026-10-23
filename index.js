@@ -18,7 +18,7 @@ import { defineTool } from "./lib/define-tool.mjs";
 import { AxClient } from "./lib/ax-client.mjs";
 import { CdpBrowser } from "./lib/cdp-browser.mjs";
 import { createComputerTool } from "./lib/computer-tool.mjs";
-import { createBrowserTool, createBrowserUseTool } from "./lib/browser-tool.mjs";
+import { createBrowserTool } from "./lib/browser-tool.mjs";
 import { createSessionTool } from "./lib/session-tool.mjs";
 import { createUpdateTool } from "./lib/update-tool.mjs";
 import { UpdateService } from "./lib/update-service.mjs";
@@ -56,7 +56,6 @@ export function apply(ctx, config = {}) {
   const settings = config ?? {};
   const ax = new AxClient();
   const browser = new CdpBrowser({ profile: "browser" });
-  const browserUse = new CdpBrowser({ profile: "browser-use" });
 
   const define = (options) => defineTool(options);
   const getService = (serviceName) => ctx.get(serviceName);
@@ -120,9 +119,6 @@ export function apply(ctx, config = {}) {
   if (settings.browser !== false) {
     definitions.push(createBrowserTool({ driver: browser, defineTool: define }));
   }
-  if (settings.browserUse !== false) {
-    definitions.push(createBrowserUseTool({ driver: browserUse, defineTool: define }));
-  }
   if (settings.sessionMessaging !== false) {
     definitions.push(createSessionTool({ defineTool: define, getService }));
   }
@@ -142,7 +138,6 @@ export function apply(ctx, config = {}) {
     updateService?.dispose();
     void ax.dispose().catch(() => {});
     void browser.dispose().catch(() => {});
-    void browserUse.dispose().catch(() => {});
   };
   if (typeof ctx.on === "function") ctx.on("dispose", dispose);
   else if (typeof ctx.effect === "function") ctx.effect(() => dispose);

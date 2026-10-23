@@ -10,7 +10,6 @@
 | --- | --- | --- |
 | `computer_use` | 通过无障碍树和截图读写原生 App | macOS 用 `bin/dsh-ax`（辅助功能）；Windows 用 `bin/dsh-uia.exe`（UI Automation，首次使用时现编译） |
 | `browser` | 列出插件自己的 Chrome 窗口与标签页、绑定一个、读取、点击、输入、导航 | 用 Chrome DevTools 协议驱动插件自己拉起的 Chrome（独立 profile） |
-| `browser_use` | 同样的动作，但用第二个独立 Chrome profile | 同一个驱动，另一个 profile |
 | `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Host 的 `sessionController` 与 `workspaceRegistry` |
 | `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host 的 `pluginManager` 与 `jobs` |
 
@@ -18,7 +17,7 @@
 
 - **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限，截图另需屏幕录制权限。Windows 上插件第一次调用时才用 `native/dsh-uia.cs` 编出 `bin/dsh-uia.exe`，用的是 Windows 自带的 .NET Framework 4.x 里的 `csc.exe`——不需要装 .NET SDK、不需要指定 PowerShell 版本、不需要管理员权限。
 - **DSH `>= 0.2.1-rc.1`**，不设未来版本上限。插件在挂载前检查所需的 Host 能力，缺哪个就报哪个名字，不靠版本号猜。
-- **不需要浏览器扩展。** 两个浏览器工具都拉起自己的 Chrome，**不会**挂到你正在用的 Chrome 上，所以不会往你的浏览会话里注入任何东西。
+- **不需要浏览器扩展。** 浏览器工具拉起自己的 Chrome，**不会**挂到你正在用的 Chrome 上，所以不会往你的浏览会话里注入任何东西。
 
 ## 安装
 
@@ -52,7 +51,6 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 | --- | --- | --- |
 | `computerUse` | `true` | 是否注册 `computer_use`。 |
 | `browser` | `true` | 是否注册 `browser`。 |
-| `browserUse` | `true` | 是否注册 `browser_use`。 |
 | `sessionMessaging` | `true` | 是否注册 `session_message`。 |
 | `update` | `true` | 是否注册 `codex_tools_update`。 |
 
@@ -64,7 +62,6 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 | `anyApp` | `true` | 关闭后只允许操作 `allowedApps` 里的 App。 |
 | `allowedApps` | `[]` | `anyApp` 关闭时允许的 App 名单。 |
 | `browserEnabled` | `true` | `browser` 总开关。 |
-| `browserUseEnabled` | `true` | `browser_use` 总开关。 |
 
 ## `computer_use`
 
@@ -94,15 +91,6 @@ dsh plugin install /absolute/path/to/dsh-codex-tools
 插件通过 DevTools 协议拉起自己的 Chrome，profile 在 `~/.dsh/dsh-codex-tools/browser`。`list_browsers` 看自己开的窗口，`list_tabs` 看标签页，`open_tab` 或 `get_tab` 绑定一个并保持绑定。
 
 `state` 每个无障碍节点打印一行，格式是 `[1234567] button Submit`。这个编号在同一个页面里保持有效，之后再读一次 `state` 不会重新编号。`press_key` 接受 xdotool 风格的按键名（`Return`、`Tab`、`ArrowDown`、`super+c`）和组合键。`set_value` 是替换输入框里的内容，不是追加。
-
-## `browser_use`
-
-同样的动作，但用 `~/.dsh/dsh-codex-tools/browser-use` 这个第二个 profile。适合「一个窗口保持登录、另一个保持干净」，或者同时需要两个互不干扰的界面：两个窗口之间不共享 cookie、存储和标签页，也都不是你自己的 Chrome。
-
-```
-browser_use { action: "list_browsers" }
-browser_use { action: "open_tab", url: "http://127.0.0.1:3000" }
-```
 
 ## `session_message`
 
@@ -162,7 +150,7 @@ client.js                构建后的 client 半侧（esbuild 产物）
 lib/ax-client.mjs        电脑操控辅助程序的 JSON 行客户端
 lib/computer-tool.mjs    computer_use
 lib/cdp-browser.mjs      Chrome DevTools 协议驱动
-lib/browser-tool.mjs     browser 与 browser_use
+lib/browser-tool.mjs     browser
 lib/session-tool.mjs     session_message
 lib/update-tool.mjs      codex_tools_update
 lib/update-service.mjs   GitHub 发布检查

@@ -9,7 +9,7 @@ How the pieces of this plugin fit together, and what each boundary promises.
 | Host | `index.js`, `lib/*.mjs` | the Harness process, Node |
 | Client | `client-entry.js` → `client.js` | the Harness Web UI, React |
 
-The Host half registers the five tools and two HTTP routes. The Client half only
+The Host half registers the four tools and two HTTP routes. The Client half only
 renders the settings page: it reads and writes through those routes, so the page
 never touches the filesystem or the machine directly.
 
@@ -49,24 +49,17 @@ action re-reads state afterwards (unless `return_state: false`), and every state
 read is a diff against the previous one unless `full_tree: true`. An index from a
 stale tree is rejected by the helper rather than applied to the wrong element.
 
-## `browser` and `browser_use`
+## `browser`
 
 ```
 tool call → lib/browser-tool.mjs → lib/cdp-browser.mjs → Chrome (DevTools Protocol)
 ```
 
-`CdpBrowser` owns one Chrome instance per profile. It starts Chrome with a private
-profile directory, waits for the DevTools endpoint (reading `DevToolsActivePort`
-from that profile), and talks to it over CDP. Two profiles are wired:
-
-| Tool | Profile |
-| --- | --- |
-| `browser` | `~/.dsh/dsh-codex-tools/browser` |
-| `browser_use` | `~/.dsh/dsh-codex-tools/browser-use` |
-
-Neither attaches to a Chrome the user already runs: the plugin always launches its
-own, so no debugging flag, extension or remote-debugging port is imposed on the
-user's browser session.
+`CdpBrowser` owns one Chrome instance. It starts Chrome with a private profile
+directory at `~/.dsh/dsh-codex-tools/browser`, waits for the DevTools endpoint
+(reading `DevToolsActivePort` from that profile), and talks to it over CDP. It
+does not attach to a Chrome the user already runs, so no debugging flag, extension
+or remote-debugging port is imposed on the user's browser session.
 
 A bound tab stays bound for later calls, which is what keeps element ids stable
 between a `state` read and the action that uses them. While an action runs the
@@ -99,13 +92,12 @@ failure with the manual command, never as success.
 ## Settings
 
 `~/.dsh/dsh-codex-tools/settings.json` holds what the page owns: the two master
-switches, the any-app/allowed-apps restriction for `computer_use`, and the browser
-window switches. The tools read the file on every call, so a switch takes effect on
-the next tool call without a restart.
+switches and the any-app/allowed-apps restriction for `computer_use`. The tools
+read the file on every call, so a switch takes effect on the next tool call without
+a restart.
 
 The Host Config on the patch row is a different layer: it decides which tools are
-registered at all (`computerUse`, `browser`, `browserUse`, `sessionMessaging`,
-`update`).
+registered at all (`computerUse`, `browser`, `sessionMessaging`, `update`).
 
 ## Pages
 

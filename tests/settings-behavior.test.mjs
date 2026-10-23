@@ -35,11 +35,10 @@ test("Excel and lock screen switches are enforced", () => {
   assert.equal(computerDenial(normalizeSettings({ lockScreen: true }), "Safari", { locked: true }), null);
 });
 
-test("full CDP and each browser window switch are enforced", () => {
-  assert.match(browserDenial(normalizeSettings({ fullCdp: false }), "browser"), /CDP/u);
-  assert.match(browserDenial(normalizeSettings({ browserEnabled: false }), "browser"), /Chrome/u);
-  assert.equal(browserDenial(normalizeSettings({ browserEnabled: false }), "browser-use"), null);
-  assert.match(browserDenial(normalizeSettings({ browserUseEnabled: false }), "browser-use"), /浏览器/u);
+test("full CDP and the browser switch are enforced", () => {
+  assert.match(browserDenial(normalizeSettings({ fullCdp: false })), /CDP/u);
+  assert.match(browserDenial(normalizeSettings({ browserEnabled: false })), /浏览器/u);
+  assert.equal(browserDenial(normalizeSettings({})), null);
 });
 
 test("URL target settings pick this window or the system browser", () => {
