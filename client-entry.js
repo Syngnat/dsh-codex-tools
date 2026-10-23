@@ -363,7 +363,7 @@ function Page({ returnToConversation }) {
       h("div", { style: cardStyle }, Row({ title: text.fullCdp, description: `${text.risk}。${text.fullCdpDesc}`, control: h(Switch, { checked: settings.fullCdp, label: text.fullCdp, onChange: (value) => patch("fullCdp", value) }) })))
     : h(UpdatePanel, { text }),
     h("div", { style: { display: "flex", gap: 12, alignItems: "center", marginTop: 18 } },
-      h("button", { type: "button", onClick: returnToConversation, style: controlStyle }, text.back),
+      returnToConversation ? h("button", { type: "button", onClick: returnToConversation, style: controlStyle }, text.back) : null,
       status ? h("span", { style: descStyle }, status) : null,
       error ? h("span", null, error) : null)));
 }
@@ -537,6 +537,11 @@ export function apply(ctx) {
       onClick: () => ctx.layout.selectPanel("dsh-codex-tools"),
     }, COPY.zh.openSettings);
   }));
+  // The same page also opens from the settings dialog's own nav, so the
+  // settings are one click away instead of buried under the Plugins page.
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section", id: "dsh-codex-tools", order: 90, label,
+  }, Page));
   ctx.slots.inject("main", () => ctx.slots.register({
     name: "main",
     key: "dsh-codex-tools",
