@@ -3,3 +3,6 @@ node_modules/
 *.log
 .release-check/
 .DS_Store
+
+# Built on first use by lib/ax-client.mjs with the Windows C# compiler.
+bin/dsh-uia.exe
