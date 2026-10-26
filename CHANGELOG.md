@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.31] - 2026-10-26
+
+### Fixed
+
+- Windows `computer_use` addresses a **window**, not just a process name. `app: "chrome"` used to resolve to whichever Chrome process the enumeration reached first, so on a machine with two Chrome windows a click landed in the other window's page and `type_text` failed with a bare localized "access denied". An `app` that matches several windows is now refused with the candidate list (pid, handle, title, session), and `pid`, `window_handle` or `window_title` chooses one. A pid is not always enough either: two windows of one process share it, and the error says so instead of picking one.
+- `type_text`, `paste` and `set_value` prefer the UI Automation `ValuePattern` and otherwise verify that the target window holds the foreground, raising it with an attach-thread retry, before sending keys. Every failure carries the target window, the window that actually holds the foreground and the Win32 code, so `ambiguous_window`, `foreground_denied`, `input_denied` and `element_from_other_window` can be told apart instead of collapsing into "access denied".
+- An element index taken from one window is no longer used against another window, and a source window that closed after `get_state` is reported rather than silently skipped. The focused element must belong to the target window, not merely to its process, so typing cannot land in a sibling window of the same app.
+- `list_windows` reports pid, window handle, title, session, process and state per window, and works without `app` so the machine's windows can be discovered. It reads Win32 facts only: probing every window with UI Automation would block the helper behind one hung app.
+
 ## [2.0.30] - 2026-10-23
 
 ### Removed

@@ -93,18 +93,38 @@ several actions into one call.
 `get_state` returns a **diff** against the previous read by default; pass
 `full_tree: true` when you need the whole tree.
 
+### Choosing the window
+
+`app` names the app; `pid`, `window_handle` and `window_title` pick one of its
+windows. One process can own several windows showing different pages — two Chrome
+profiles both answer to `chrome` — so an `app` that matches more than one window is
+refused with the candidate list (pid, handle, title, session) instead of silently
+taking the first match. A pid can still leave two windows, because one process may
+own several; add a handle or a title fragment then. Call `list_windows` without
+`app` to see every window on the machine with its identity. Element indices belong
+to the window that produced them, and using one against another window is reported
+instead of clicked.
+
 Screenshots are written to a PNG in the system temporary directory and the path is
 returned, so the image can be opened with the ordinary image reader.
 
 ### What you see on screen
 
-`computer_use` does not activate the target window and does not move the system
-pointer: the helper performs accessibility actions (`AXPress`, `AXValue`, …) or UI
-Automation patterns directly on elements. An operation can succeed on a window that
-sits behind another app.
+On macOS `computer_use` does not activate the target window and does not move the
+system pointer: the helper performs accessibility actions (`AXPress`, `AXValue`, …)
+directly on elements, so an operation can succeed on a window that sits behind
+another app.
 
-Nothing is drawn over your desktop: there is no host overlay and no floating
-cursor, because the helper is the only participant. Actions that delete data,
+On Windows input needs the keyboard, so `click`, `type_text`, `paste`, `set_value`,
+`press_key`, `scroll` and `drag` first verify that the target window holds the
+foreground — raising it, with an attach-thread retry, when it does not — and
+`set_value` prefers the UI Automation `ValuePattern`, so a field can be filled
+without any keystrokes. The pointer moves to the element about to be clicked, and a
+small arrow flashes at that point and hides about half a second later; it is not
+shown when the helper starts and does not stay on screen afterwards.
+
+Nothing else is drawn over your desktop: there is no host overlay, because the
+helper is the only participant. Actions that delete data,
 transmit sensitive data, install software, solve CAPTCHAs or change system settings
 are left to the model and the user to agree on — the helper does not enforce a
 policy of its own.
