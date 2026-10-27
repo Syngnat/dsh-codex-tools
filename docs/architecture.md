@@ -113,3 +113,12 @@ registered at all (`computerUse`, `browser`, `sessionMessaging`, `update`).
 The settings page is a panel registered in the Client half, not a sidebar row. It is
 reached from this plugin's own page in the 插件 (Plugins) page, so the sidebar keeps
 one row for the app instead of one row per plugin.
+
+## Turn-trigger title
+
+The target's waking `agent-message` renders as a core turn-trigger card. Its core
+title is generic ("收到任务消息"); the client half of this plugin shadows the
+keyed `conversation.chat.node` / `turn-trigger` entry at priority 1000 and titles
+an agent message `收到会话 <sender> 的消息`, using `source.senderSessionId`. Other
+trigger kinds keep their own Chinese titles. This is a client-slot override; no
+DSH source file is modified.

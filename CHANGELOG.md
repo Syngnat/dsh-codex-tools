@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.39] - 2026-10-27
+
+### Added
+
+- Plugin-only turn-trigger title override, no DSH source change. The client half registers a higher-priority `conversation.chat.node` / `turn-trigger` entry, so an `agent-message` card is titled `收到会话 <sender> 的消息` instead of the generic `收到任务消息`. The sender comes from the durable `source.senderSessionId`; no title falls back to `另一个会话`.
+- Other trigger kinds keep distinct Chinese titles (`收到目标消息`, `子代理已完成`, `收到 Webhook 消息`, `收到定时任务消息`, `收到任务消息`). The card keeps a collapsible body with the original content.
+- The override shadows the core turn-trigger renderer for all kinds at priority 1000; DSH itself is untouched.
+- Tests pin the title mapping and text extraction.
+
 ## [2.0.38] - 2026-10-27
 
 ### Fixed

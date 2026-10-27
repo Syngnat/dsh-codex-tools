@@ -639,6 +639,74 @@ function UpdatePanel({ text }) {
     error ? h("p", { style: { ...descStyle, marginTop: 12, color: "var(--dsw-alias-state-error-primary, #b91c1c)" } }, error) : null
   );
 }
+// ---------------------------------------------------------------- turn trigger
+var triggerCardStyle = {
+  margin: "12px 0",
+  border: "1px solid var(--dsw-alias-border-secondary, #e5e7eb)",
+  borderRadius: 12,
+  background: "var(--dsw-alias-bg-secondary, #f7f8fa)",
+  overflow: "hidden"
+};
+var triggerHeaderStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  padding: "10px 12px",
+  background: "transparent",
+  border: 0,
+  cursor: "pointer",
+  color: "var(--dsw-alias-label-primary, #1a1a1a)",
+  font: "inherit",
+  textAlign: "left"
+};
+var triggerTitleStyle = { flex: 1, fontSize: 13, fontWeight: 600 };
+var triggerTimeStyle = { fontSize: 11, color: "var(--dsw-alias-label-secondary, #5c6570)" };
+var triggerChevronStyle = { fontSize: 12, color: "var(--dsw-alias-label-secondary, #5c6570)" };
+var triggerBodyStyle = { padding: "0 12px 12px 34px" };
+var triggerExplanationStyle = {
+  margin: "0 0 8px",
+  fontSize: 12,
+  color: "var(--dsw-alias-label-secondary, #5c6570)"
+};
+var triggerContentStyle = { fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" };
+function turnTriggerTitle(source) {
+  const kind = source?.kind;
+  if (kind === "agent-message") {
+    const sender = typeof source.senderSessionId === "string" && source.senderSessionId.length > 0 ? source.senderSessionId : "另一个会话";
+    return `收到会话 ${sender} 的消息`;
+  }
+  switch (kind) {
+    case "goal": return "收到目标消息";
+    case "subagent-settled": return "子代理已完成";
+    case "webhook": return "收到 Webhook 消息";
+    case "schedule": return "收到定时任务消息";
+    case "cordis-host-runner": return "收到插件消息";
+    default: return "收到任务消息";
+  }
+}
+function turnTriggerText(content) {
+  if (!Array.isArray(content)) return "";
+  return content.map((part) => part !== null && typeof part === "object" && typeof part.text === "string" ? part.text : "").filter((text) => text.length > 0).join("\n");
+}
+function turnTriggerClock(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+}
+function CodexTurnTriggerView({ node }) {
+  const [open, setOpen] = import_react.default.useState(false);
+  const data = node?.data ?? {};
+  const text = turnTriggerText(data.content);
+  return h("section", { style: triggerCardStyle },
+    h("button", { type: "button", style: triggerHeaderStyle, "aria-expanded": open, onClick: () => setOpen(!open) },
+      h("span", { style: triggerTitleStyle }, turnTriggerTitle(data.source)),
+      h("time", { style: triggerTimeStyle }, turnTriggerClock(data.time)),
+      h("span", { style: triggerChevronStyle }, open ? "⌃" : "⌄")),
+    open ? h("div", { style: triggerBodyStyle },
+      h("p", { style: triggerExplanationStyle }, "这条通知触发了本轮回复。"),
+      text.length > 0 ? h("div", { style: triggerContentStyle }, text) : null) : null);
+}
 var inject = ["slots", "layout", "locale"];
 function apply(ctx) {
   const label = () => "\u7535\u8111\u64CD\u63A7";
@@ -653,5 +721,11 @@ function apply(ctx) {
     key: "dsh-codex-tools",
     inject: () => ({ returnToConversation: () => ctx.layout.selectPanel(null) })
   }, Page));
+  ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
+    name: "conversation.chat.node",
+    key: "turn-trigger",
+    priority: 1000,
+    locale: "dsh-codex-tools"
+  }, CodexTurnTriggerView));
 }
 return module.exports;}});

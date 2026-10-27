@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-codex-tools",
-  "version": "2.0.38",
+  "version": "2.0.39",
   "private": true,
   "description": "Operate desktop apps and a browser window, and manage those permissions.",
   "type": "module",
@@ -32,7 +32,7 @@
     "locale/*.json"
   ],
   "scripts": {
-    "test": "node --test tests/unit.test.mjs tests/update.test.mjs tests/update-route.test.mjs tests/settings-behavior.test.mjs tests/browser-keys.test.mjs tests/chrome-args.test.mjs tests/online-update.test.mjs tests/format-time.test.mjs tests/window-addressing.test.mjs",
+    "test": "node --test tests/unit.test.mjs tests/update.test.mjs tests/update-route.test.mjs tests/settings-behavior.test.mjs tests/browser-keys.test.mjs tests/chrome-args.test.mjs tests/online-update.test.mjs tests/format-time.test.mjs tests/window-addressing.test.mjs tests/turn-trigger.test.mjs",
     "test:windows": "node --test tests/live-windows.test.mjs"
   },
   "dsh": {
