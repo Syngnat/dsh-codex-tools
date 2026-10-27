@@ -173,6 +173,8 @@ title or id>", and the first content line names the sender too. Only an explicit
 `mode: "queue"` waits for the next turn. Subagent targets keep the Host's
 ownership-checked prompt path.
 
+After a successful `send`, the sender session gets a durable `【跨会话发送记录】` user message at the end of the sending turn, showing the recipient and the exact text; it is appended after the turn and survives reloads.
+
 `read` returns the target session's recent user/assistant text (`limit` 1–100,
 default 20) as `{sessionId,title?,messages:[{seq,role,source?,text}]}`. It reads
 across workspaces through the Host `sessionQuery` model surface, bypassing the

@@ -274,6 +274,48 @@ test("session_message send steers an attributed agent message with the sender se
   assert.equal(steered.length, 1);
 });
 
+test("session_message leaves a sent record in the sender transcript after the turn ends", async () => {
+  const ctx = fakeContext();
+  let listener;
+  const appended = [];
+  const sender = {
+    id: "sender-1",
+    session: {
+      append: (type, data) => appended.push({ type, data }),
+    },
+    ctx: {
+      on: (_event, handler) => {
+        listener = handler;
+        return () => {
+          listener = undefined;
+        };
+      },
+    },
+  };
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async () => ({
+            agent: { session: { header: { origin: "user" } }, steer: () => {} },
+          }),
+          prompt: async () => {},
+          list: async () => ({ items: [] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: "target", message: "hello" }, { agent: sender });
+  assert.equal(appended.length, 0);
+  listener({ id: "sender-1" }, { type: "turn/end" });
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0].type, "user/message");
+  assert.equal(appended[0].data.role, "user");
+  assert.match(appended[0].data.content[0].text, /已发送给会话 target/);
+  assert.match(appended[0].data.content[0].text, /hello/);
+  assert.deepEqual(appended[0].data.source.kind, "user");
+});
+
 test("session_message repairs a bare UUID to the canonical session- id", async () => {
   const ctx = fakeContext();
   const steered = [];

@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.37] - 2026-10-27
+
+### Added
+
+- The **sender** now gets a durable sent-message bubble. After a successful `send`, the tool waits for the sending turn to end, then appends a `user/message` record to the sender's own transcript: `【跨会话发送记录】已发送给会话 <id>：<text>`. It is visible in the sender's chat, survives reloads, and is appended after the turn so it is not fed into the model step that performed the send. The next turn sees it as a marked record, not a fresh instruction.
+- This complements target-side delivery: the target receives the attributed `agent-message`/relay message, while the sender now has a local record instead of only a tool card.
+- Tests cover the turn-end timing: no record before `turn/end`, one record after it.
+
 ## [2.0.36] - 2026-10-27
 
 ### Fixed
