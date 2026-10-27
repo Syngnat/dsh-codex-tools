@@ -74,9 +74,10 @@ ordinary Harness session — it shows up in the sidebar and runs on its own.
 
 `send` resolves the target Agent (`sessionController.resolveAgent`) and steers a
 durable `agent-message` message whose source uses `form: "relay"` and the sender's
-title (or id) as `senderSessionId`. This preserves the sender in the target's
-message row and bypasses the next-turn queue even while the target is running a
-goal. The public `sessionController.prompt` path remains the fallback for Hosts
+title (or id) as `senderSessionId`. The recipient reads `Agent <title or id> 发来一条消息：`;
+when the title is absent the id is printed once, never twice. This preserves the
+sender in the target's message row and bypasses the next-turn queue even while the
+target is running a goal. The public `sessionController.prompt` path remains the fallback for Hosts
 without `resolveAgent`/`steer`, for subagent targets (ownership checks), and when a
 caller explicitly asks for `mode: "queue"`.
 

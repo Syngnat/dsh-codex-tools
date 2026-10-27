@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.38] - 2026-10-27
+
+### Fixed
+
+- The relay message prefix no longer repeats the sender when there is no session title: it was `Agent <id> (<id>) sent a message:`, now it is `Agent <id> 发来一条消息：`. When a title exists it stays `Agent <title> (<id>) 发来一条消息：`.
+- The prefix is Chinese; no English `sent a message` remains in the recipient's bubble.
+- Tests cover the no-title dedupe and the localized prefix.
+
 ## [2.0.37] - 2026-10-27
 
 ### Added

@@ -264,7 +264,7 @@ test("session_message send steers an attributed agent message with the sender se
   assert.equal(message.role, "user");
   assert.deepEqual(message.source, { kind: "agent-message", form: "relay", senderSessionId: "迁移任务" });
   assert.equal(message.content[0].type, "text");
-  assert.match(message.content[0].text, /Agent 迁移任务 \(sender-1\) sent a message:/);
+  assert.match(message.content[0].text, /Agent 迁移任务 \(sender-1\) 发来一条消息：/);
   assert.deepEqual(message.content[1], { type: "text", text: "sync" });
   assert.equal(followed.length, 0);
 
@@ -314,6 +314,27 @@ test("session_message leaves a sent record in the sender transcript after the tu
   assert.match(appended[0].data.content[0].text, /已发送给会话 target/);
   assert.match(appended[0].data.content[0].text, /hello/);
   assert.deepEqual(appended[0].data.source.kind, "user");
+});
+
+test("session_message does not repeat the sender id in the relay prefix", async () => {
+  const ctx = fakeContext();
+  const steered = [];
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async () => ({
+            agent: { session: { header: { origin: "user" } }, steer: (message) => steered.push(message) },
+          }),
+          prompt: async () => {},
+          list: async () => ({ items: [] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: "target", message: "sync" }, { agent: { id: "session-a83183c4" } });
+  assert.equal(steered.length, 1);
+  assert.equal(steered[0].content[0].text, "Agent session-a83183c4 发来一条消息：");
 });
 
 test("session_message repairs a bare UUID to the canonical session- id", async () => {
