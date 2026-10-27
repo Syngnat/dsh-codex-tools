@@ -4,6 +4,13 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.35] - 2026-10-27
+
+### Added
+
+- `session_message` gains `action: "read"`: it returns the target session's most recent user/assistant text messages, with durable source attribution, so an AI-to-AI exchange can be read back across workspaces. The Host's workspace-scoped `session_event_search`/`session_trace` tools reject a session outside the caller workspace (`session target is outside the caller workspace`); `read` goes through the Host `sessionQuery` service directly, the same trusted read path the core query tools use after their authorization layer.
+- `read` accepts the same `session-<uuid>`/bare-UUID normalization as `send`, takes `limit` 1–100 (default 20), and returns `{sessionId, title?, messages:[{seq, role, source?, text}]}`. It reads the current model surface, not a full archive; pending inbox messages are not included.
+
 ## [2.0.34] - 2026-10-27
 
 ### Fixed

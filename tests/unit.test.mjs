@@ -322,6 +322,67 @@ test("session_message falls back to a bare UUID when the prefixed id is absent",
   assert.equal(steered[0].sessionId, bare);
 });
 
+test("session_message read returns recent user/assistant text and relay attribution", async () => {
+  const ctx = fakeContext();
+  const events = [
+    {
+      type: "user/message",
+      seq: 1,
+      data: {
+        role: "user",
+        content: [{ type: "text", text: "sync" }],
+        source: { kind: "agent-message", form: "relay", senderSessionId: "sender-1" },
+      },
+    },
+    {
+      type: "assistant/message",
+      seq: 2,
+      data: { message: { role: "assistant", content: [{ type: "reasoning", text: "private" }, { type: "text", text: "done" }] } },
+    },
+    { type: "tool/call", seq: 3, data: { name: "bash" } },
+    { type: "assistant/message", seq: 4, data: { message: { role: "assistant", content: [{ type: "text", text: "final" }] } } },
+  ];
+  ctx.get = (name) =>
+    name === "sessionQuery"
+      ? { readSurface: async (sessionId) => ({ session: { id: sessionId }, events }), readTitle: async () => "目标会话" }
+      : name === "sessionController"
+        ? { list: async () => ({ items: [] }) }
+        : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  const value = JSON.parse(await tool.execute({ action: "read", session_id: "session-x", limit: 3 }, {}));
+  assert.equal(value.title, "目标会话");
+  assert.deepEqual(value.messages.map((message) => message.text), ["sync", "done", "final"]);
+  assert.deepEqual(value.messages[0].source, { kind: "agent-message", form: "relay", senderSessionId: "sender-1" });
+  assert.equal(value.messages[1].role, "assistant");
+});
+
+test("session_message read normalizes the id and rejects a bad limit", async () => {
+  const ctx = fakeContext();
+  const bare = "984b4cef-c3b6-4faa-a59f-5688d6f6c7ee";
+  const canonical = "session-" + bare;
+  ctx.get = (name) =>
+    name === "sessionQuery"
+      ? {
+          readSurface: async (sessionId) => {
+            if (sessionId !== canonical) throw Object.assign(new Error("session was not found"), { code: "SESSION_QUERY_SESSION_NOT_FOUND" });
+            return { events: [{ type: "assistant/message", seq: 1, data: { message: { role: "assistant", content: [{ type: "text", text: "ok" }] } } }] };
+          },
+          readTitle: async () => undefined,
+        }
+      : name === "sessionController"
+        ? { list: async () => ({ items: [] }) }
+        : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  const value = JSON.parse(await tool.execute({ action: "read", session_id: bare }, {}));
+  assert.equal(value.sessionId, canonical);
+  assert.equal(value.messages[0].text, "ok");
+  await assert.rejects(() => tool.execute({ action: "read", session_id: bare, limit: 0 }, {}), /limit/);
+});
+
 test("session_message keeps the ownership-checked prompt path for subagents", async () => {
   const ctx = fakeContext();
   const prompted = [];

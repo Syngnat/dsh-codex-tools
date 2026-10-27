@@ -110,7 +110,7 @@ Windows 上输入必须走键盘，所以 `click`、`type_text`、`paste`、`set
 ## `session_message`
 
 动作：`list_workspaces`、`list_sessions`、`dispatch`、`create`、`send`、
-`fork`、`rename`。
+`read`、`fork`、`rename`。
 
 `dispatch` 是核心：一次调用在目标工作区建会话并投递完整简报。
 
@@ -126,6 +126,8 @@ session_message {
 目标会话看不到发起方的对话，所以简报必须自包含。建出来的会话就是普通 Harness 会话：出现在侧边栏、独立运行，之后可以用 `send` 继续指挥。
 
 `send` 默认立即投递：即使目标正在跑一轮或一个目标，也会以 `agent-message` + `relay` 来源 steer 进去，不排到下一轮。目标消息行显示「来自会话 <发送方标题或 id>」，消息正文第一行也带发送方。只有显式传 `mode: "queue"` 时才按下一轮排队；子代理目标仍走宿主的所有权检查路径。
+
+`read` 读取目标会话最近的用户/助手文本消息（`limit` 1–100，默认 20），返回 `{sessionId,title?,messages:[{seq,role,source?,text}]}`，支持跨工作区。它直接走宿主 `sessionQuery` 的当前 model surface，绕过 `session_event_search`/`session_trace` 的工作区限制，因此能看到对方会话里的回复；未消费的 inbox 消息不在其中。
 
 `session_id` 接受 `session-<uuid>` 或裸 UUID：工具先按规范形式解析，只有 not-found 才回退另一种，所有权或 busy 错误不会换目标重试。`list_sessions` 默认只列顶层会话，并带上 `origin` 与 `parentSessionId`；需要看裸 UUID 的子代理时显式传 `include_subagents: true`。
 

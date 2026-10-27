@@ -147,8 +147,8 @@ of appending to them.
 
 ## `session_message`
 
-Actions: `list_workspaces`, `list_sessions`, `dispatch`, `create`, `send`, `fork`,
-`rename`.
+Actions: `list_workspaces`, `list_sessions`, `dispatch`, `create`, `send`, `read`,
+`fork`, `rename`.
 
 `dispatch` is the headline: it creates a session in a target workspace and sends it
 a complete brief in one call.
@@ -172,6 +172,12 @@ of waiting for the next turn. The target message row shows "From session <sender
 title or id>", and the first content line names the sender too. Only an explicit
 `mode: "queue"` waits for the next turn. Subagent targets keep the Host's
 ownership-checked prompt path.
+
+`read` returns the target session's recent user/assistant text (`limit` 1–100,
+default 20) as `{sessionId,title?,messages:[{seq,role,source?,text}]}`. It reads
+across workspaces through the Host `sessionQuery` model surface, bypassing the
+workspace guard on `session_event_search`/`session_trace`; unconsumed inbox
+messages are not included.
 
 `session_id` accepts either `session-<uuid>` or a bare UUID. The tool tries the
 canonical form first and falls back to the other shape only for a not-found
