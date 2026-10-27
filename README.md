@@ -166,6 +166,13 @@ The target session cannot see the calling conversation, so the brief must stand
 alone. The session it creates is an ordinary Harness session: it appears in the
 sidebar, runs on its own, and can be steered afterwards with `send`.
 
+`send` delivers immediately by default: even when the target is running a turn or a
+goal, the message is steered in as an `agent-message` with the `relay` form instead
+of waiting for the next turn. The target message row shows "From session <sender
+title or id>", and the first content line names the sender too. Only an explicit
+`mode: "queue"` waits for the next turn. Subagent targets keep the Host's
+ownership-checked prompt path.
+
 `workspace` accepts a workspace id, an absolute path, or part of a title. An
 absolute path that is not registered yet is created as a new workspace.
 

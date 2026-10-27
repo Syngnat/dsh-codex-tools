@@ -72,6 +72,14 @@ Pure Host plumbing: `sessionController` and `workspaceRegistry` from the Context
 No storage access, no filesystem walk, no helper process. A dispatched session is an
 ordinary Harness session — it shows up in the sidebar and runs on its own.
 
+`send` resolves the target Agent (`sessionController.resolveAgent`) and steers a
+durable `agent-message` message whose source uses `form: "relay"` and the sender's
+title (or id) as `senderSessionId`. This preserves the sender in the target's
+message row and bypasses the next-turn queue even while the target is running a
+goal. The public `sessionController.prompt` path remains the fallback for Hosts
+without `resolveAgent`/`steer`, for subagent targets (ownership checks), and when a
+caller explicitly asks for `mode: "queue"`.
+
 ## `codex_tools_update`
 
 Two halves that must not be confused:

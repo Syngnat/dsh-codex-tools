@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.32] - 2026-10-27
+
+### Fixed
+
+- `session_message` with `action: "send"` now steers immediately by default. Previously the omitted `mode` became a queued follow-up, so a session running a goal received the message only after its current turn (or goal round) completed. The default is now `mode: "steer"`; `mode: "queue"` remains an explicit opt-in.
+- Cross-session sends keep their sender: the target Agent is resolved and steered with a durable `agent-message` message whose source uses `form: "relay"`. The target message row shows "来自会话 <sender title or id>" (client locale: "From session …") and the recipient model sees the sender in the first content line, instead of a bare user prompt with no attribution.
+- The sender title is resolved from the Host session list with the sender id as fallback. Subagent targets keep the Host's ownership-checked `sessionController.prompt` path, and Hosts without `resolveAgent`/`steer` fall back to the public prompt path with `mode: "steer"`.
+- Tests cover the default steer, explicit queue, relay source and sender line, the subagent fallback, and the attributed message path.
+
 ## [2.0.31] - 2026-10-26
 
 ### Fixed

@@ -210,7 +210,7 @@ test("session_message validates its own arguments before calling the Host", asyn
   assert.equal(calls.length, 0);
 });
 
-test("session_message send carries a requestId and an optional mode", async () => {
+test("session_message send defaults to steer and only queues when asked", async () => {
   const ctx = fakeContext();
   const calls = [];
   ctx.get = (name) =>
@@ -224,11 +224,75 @@ test("session_message send carries a requestId and an optional mode", async () =
   assert.equal(calls[0].sessionId, "s1");
   assert.equal(typeof calls[0].requestId, "string");
   assert.deepEqual(calls[0].content, [{ type: "text", text: "hello" }]);
-  assert.equal(calls[0].mode, undefined);
+  assert.equal(calls[0].mode, "steer");
 
   await tool.execute({ action: "send", session_id: "s1", message: "stop", mode: "steer" }, {});
   assert.equal(calls[1].mode, "steer");
   assert.notEqual(calls[0].requestId, calls[1].requestId);
+
+  await tool.execute({ action: "send", session_id: "s1", message: "later", mode: "queue" }, {});
+  assert.equal(calls[2].mode, "queue");
+});
+
+test("session_message send steers an attributed agent message with the sender session", async () => {
+  const ctx = fakeContext();
+  const steered = [];
+  const followed = [];
+  const prompted = [];
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async (sessionId) => ({
+            agent: {
+              session: { header: { origin: "user" } },
+              steer: (message) => steered.push({ sessionId, message }),
+              followup: (message) => followed.push({ sessionId, message }),
+            },
+          }),
+          prompt: async (request) => prompted.push(request),
+          list: async () => ({ items: [{ sessionId: "sender-1", title: "迁移任务" }] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: "target", message: "sync" }, { agent: { id: "sender-1" } });
+  assert.equal(prompted.length, 0);
+  assert.equal(steered.length, 1);
+  assert.equal(steered[0].sessionId, "target");
+  const message = steered[0].message;
+  assert.equal(message.role, "user");
+  assert.deepEqual(message.source, { kind: "agent-message", form: "relay", senderSessionId: "迁移任务" });
+  assert.equal(message.content[0].type, "text");
+  assert.match(message.content[0].text, /Agent 迁移任务 \(sender-1\) sent a message:/);
+  assert.deepEqual(message.content[1], { type: "text", text: "sync" });
+  assert.equal(followed.length, 0);
+
+  await tool.execute({ action: "send", session_id: "target", message: "later", mode: "queue" }, { agent: { id: "sender-1" } });
+  assert.equal(followed.length, 1);
+  assert.equal(followed[0].message.source.senderSessionId, "迁移任务");
+  assert.equal(steered.length, 1);
+});
+
+test("session_message keeps the ownership-checked prompt path for subagents", async () => {
+  const ctx = fakeContext();
+  const prompted = [];
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async () => ({
+            agent: { session: { header: { origin: "subagent" } }, steer: () => { throw new Error("must not steer"); } },
+          }),
+          prompt: async (request) => prompted.push(request),
+          list: async () => ({ items: [] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: "child", message: "hello" }, { agent: { id: "parent" } });
+  assert.equal(prompted.length, 1);
+  assert.equal(prompted[0].mode, "steer");
 });
 
 test("session_message dispatch prompts before it renames", async () => {
