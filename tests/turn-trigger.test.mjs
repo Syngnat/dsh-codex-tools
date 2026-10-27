@@ -34,7 +34,7 @@ test("turn trigger text joins text blocks only", () => {
   assert.equal(turnTriggerText(undefined), "");
 });
 
-test("the client registers a high-priority keyed turn-trigger slot", () => {
+test("client apply tolerates a DOM-free runtime", () => {
   const registrations = [];
   const ctx = {
     slots: {
@@ -43,10 +43,6 @@ test("the client registers a high-priority keyed turn-trigger slot", () => {
     },
     layout: { selectPanel() {} },
   };
-  apply(ctx);
-  const trigger = registrations.find((entry) => entry.name === "conversation.chat.node");
-  assert.ok(trigger);
-  assert.equal(trigger.key, "turn-trigger");
-  assert.equal(trigger.priority, 1000);
-  assert.equal(typeof trigger.component, "function");
+  assert.doesNotThrow(() => apply(ctx));
+  assert.ok(registrations.some((entry) => entry.name === "settings.section"));
 });

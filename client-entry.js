@@ -581,9 +581,47 @@ function CodexTurnTriggerView({ node }) {
       : null);
 }
 
+/**
+ * The keyed slot override is not guaranteed to win against the core renderer
+ * on every client build. This narrow DOM fallback rewrites only agent-message
+ * turn-trigger headers after the card body has rendered; it leaves every other
+ * trigger untouched and does not depend on DSH source changes.
+ */
+function installTurnTriggerTitles() {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+  let scheduled = false;
+  const rewrite = () => {
+    for (const card of document.querySelectorAll("[data-turn-trigger]")) {
+      const text = card.textContent ?? "";
+      const match = /Agent\s+(.+?)(?:\s+\([^)]*\))?\s+(?:发来一条消息|sent a message)/u.exec(text);
+      if (match === null) continue;
+      const sender = match[1].trim();
+      const header = card.querySelector("button");
+      if (header === null) continue;
+      const title = [...header.querySelectorAll("span")].find((node) => (node.textContent ?? "").includes("收到任务消息"));
+      if (title !== undefined) title.textContent = `收到会话 ${sender} 的消息`;
+    }
+  };
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    Promise.resolve().then(() => {
+      scheduled = false;
+      rewrite();
+    });
+  };
+  new MutationObserver(schedule).observe(document.body ?? document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+  rewrite();
+}
+
 export const inject = ["slots", "layout", "locale"];
 
 export function apply(ctx) {
+  installTurnTriggerTitles();
   const label = () => "电脑操控";
   // The same page also opens from the settings dialog's own nav, so the
   // settings are one click away instead of buried under the Plugins page.
@@ -595,12 +633,4 @@ export function apply(ctx) {
     key: "dsh-codex-tools",
     inject: () => ({ returnToConversation: () => ctx.layout.selectPanel(null) }),
   }, Page));
-  // Shadow the core turn-trigger renderer for agent messages only in title;
-  // the higher priority selects this entry for the keyed node slot.
-  ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
-    name: "conversation.chat.node",
-    key: "turn-trigger",
-    priority: 1000,
-    locale: "dsh-codex-tools",
-  }, CodexTurnTriggerView));
 }

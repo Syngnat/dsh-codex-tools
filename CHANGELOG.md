@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.42] - 2026-10-27
+
+### Fixed
+
+- The turn-trigger title override did not win the keyed slot on the live client. Added a narrow plugin-side DOM fallback: when an `agent-message` card's body is rendered (the user expands it), its header title is rewritten from `收到任务消息` to `收到会话 <sender> 的消息`. The sender is read from the rendered `Agent <sender> 发来一条消息` line. Other turn-trigger kinds are untouched.
+- The keyed-slot registration is removed to avoid shadowing the core card for unrelated triggers; the DOM observer is scoped to `[data-turn-trigger]` agent-message cards only.
+- Tests keep the title mapping and the DOM-free client boot.
+
 ## [2.0.41] - 2026-10-27
 
 ### Fixed

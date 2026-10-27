@@ -707,8 +707,39 @@ function CodexTurnTriggerView({ node }) {
       h("p", { style: triggerExplanationStyle }, "这条通知触发了本轮回复。"),
       text.length > 0 ? h("div", { style: triggerContentStyle }, text) : null) : null);
 }
+function installTurnTriggerTitles() {
+  if (typeof document === "undefined" || typeof MutationObserver === "undefined") return;
+  let scheduled = false;
+  const rewrite = () => {
+    for (const card of document.querySelectorAll("[data-turn-trigger]")) {
+      const text = card.textContent ?? "";
+      const match = /Agent\s+(.+?)(?:\s+\([^)]*\))?\s+(?:发来一条消息|sent a message)/u.exec(text);
+      if (match === null) continue;
+      const sender = match[1].trim();
+      const header = card.querySelector("button");
+      if (header === null) continue;
+      const title = [...header.querySelectorAll("span")].find((node) => (node.textContent ?? "").includes("收到任务消息"));
+      if (title !== undefined) title.textContent = `收到会话 ${sender} 的消息`;
+    }
+  };
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    Promise.resolve().then(() => {
+      scheduled = false;
+      rewrite();
+    });
+  };
+  new MutationObserver(schedule).observe(document.body ?? document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+  rewrite();
+}
 var inject = ["slots", "layout", "locale"];
 function apply(ctx) {
+  installTurnTriggerTitles();
   const label = () => "\u7535\u8111\u64CD\u63A7";
   ctx.slots.inject("settings.section", () => ctx.slots.register({
     name: "settings.section",
@@ -721,11 +752,5 @@ function apply(ctx) {
     key: "dsh-codex-tools",
     inject: () => ({ returnToConversation: () => ctx.layout.selectPanel(null) })
   }, Page));
-  ctx.slots.inject("conversation.chat.node", () => ctx.slots.register({
-    name: "conversation.chat.node",
-    key: "turn-trigger",
-    priority: 1000,
-    locale: "dsh-codex-tools"
-  }, CodexTurnTriggerView));
 }
 return module.exports;}});
