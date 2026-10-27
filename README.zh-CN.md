@@ -127,7 +127,7 @@ session_message {
 
 `send` 默认立即投递：即使目标正在跑一轮或一个目标，也会以 `agent-message` + `relay` 来源 steer 进去，不排到下一轮。目标消息行显示「来自会话 <发送方标题或 id>」，消息正文第一行也带发送方。只有显式传 `mode: "queue"` 时才按下一轮排队；子代理目标仍走宿主的所有权检查路径。
 
-`session_id` 接受 `session-<uuid>` 或裸 UUID：工具先按规范形式解析，只有 not-found 才回退另一种，所有权或 busy 错误不会换目标重试。`list_sessions` 会带上 `origin` 与 `parentSessionId`，裸 UUID 的子代理行因此能和顶层会话区分。
+`session_id` 接受 `session-<uuid>` 或裸 UUID：工具先按规范形式解析，只有 not-found 才回退另一种，所有权或 busy 错误不会换目标重试。`list_sessions` 默认只列顶层会话，并带上 `origin` 与 `parentSessionId`；需要看裸 UUID 的子代理时显式传 `include_subagents: true`。
 
 `workspace` 接受工作区 id、绝对路径或标题片段。尚未注册的绝对路径会被建成新工作区。
 

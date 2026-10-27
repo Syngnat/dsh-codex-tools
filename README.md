@@ -176,8 +176,9 @@ ownership-checked prompt path.
 `session_id` accepts either `session-<uuid>` or a bare UUID. The tool tries the
 canonical form first and falls back to the other shape only for a not-found
 result; ownership and busy failures are never retried against another session.
-`list_sessions` includes `origin` and `parentSessionId` when available, so a
-bare-UUID subagent is distinguishable from a top-level target.
+`list_sessions` lists top-level sessions only by default and includes `origin`
+and `parentSessionId` when available; pass `include_subagents: true` to see
+bare-UUID subagent rows.
 
 `workspace` accepts a workspace id, an absolute path, or part of a title. An
 absolute path that is not registered yet is created as a new workspace.

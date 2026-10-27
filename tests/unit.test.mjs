@@ -410,9 +410,11 @@ test("session_message resolves a workspace by id, path or title", async () => {
 
   const byId = JSON.parse(await tool.execute({ action: "list_sessions", workspace: "w1" }, {}));
   assert.deepEqual(byId.map((row) => row.sessionId), ["s1"]);
-  const all = JSON.parse(await tool.execute({ action: "list_sessions" }, {}));
-  assert.equal(all[1].origin, "subagent");
-  assert.equal(all[1].parentSessionId, "s1");
+  const topLevel = JSON.parse(await tool.execute({ action: "list_sessions" }, {}));
+  assert.deepEqual(topLevel.map((row) => row.sessionId), ["s1"]);
+  const withSubagents = JSON.parse(await tool.execute({ action: "list_sessions", include_subagents: true }, {}));
+  assert.equal(withSubagents[1].origin, "subagent");
+  assert.equal(withSubagents[1].parentSessionId, "s1");
 
   const byPath = await tool.execute({ action: "list_sessions", workspace: "/tmp/beta" }, {});
   assert.equal(byPath, "No matching sessions.");
