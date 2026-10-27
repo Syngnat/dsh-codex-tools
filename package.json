@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-codex-tools",
-  "version": "2.0.39",
+  "version": "2.0.40",
   "private": true,
   "description": "Operate desktop apps and a browser window, and manage those permissions.",
   "type": "module",

@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.40] - 2026-10-27
+
+### Fixed
+
+- The sender-side sent record now subscribes to the **plugin** `session/event` bus instead of `exec.agent.ctx`, whose listener did not fire in the live Host. The sender session is resolved from `exec.agent.session` or the `sessions` service.
+- A 5-second fallback appends the record even when no `turn/end` event is observed, so a successful send always leaves a visible `【跨会话发送记录】` bubble in the sender's transcript. The record is still a user message and is marked as a send record.
+- The send result remains `Delivered the agent message ... immediately`; target delivery is unchanged.
+
 ## [2.0.39] - 2026-10-27
 
 ### Added

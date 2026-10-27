@@ -283,14 +283,9 @@ test("session_message leaves a sent record in the sender transcript after the tu
     session: {
       append: (type, data) => appended.push({ type, data }),
     },
-    ctx: {
-      on: (_event, handler) => {
-        listener = handler;
-        return () => {
-          listener = undefined;
-        };
-      },
-    },
+  };
+  ctx.on = (event, handler) => {
+    if (event === "session/event") listener = handler;
   };
   ctx.get = (name) =>
     name === "sessionController"

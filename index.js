@@ -120,7 +120,11 @@ export function apply(ctx, config = {}) {
     definitions.push(createBrowserTool({ driver: browser, defineTool: define }));
   }
   if (settings.sessionMessaging !== false) {
-    definitions.push(createSessionTool({ defineTool: define, getService }));
+    definitions.push(createSessionTool({
+      defineTool: define,
+      getService,
+      onSessionEvent: (handler) => ctx.on("session/event", handler),
+    }));
   }
   if (settings.update !== false) {
     definitions.push(createUpdateTool({ defineTool: define, getOnline }));
