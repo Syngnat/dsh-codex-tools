@@ -173,6 +173,12 @@ title or id>", and the first content line names the sender too. Only an explicit
 `mode: "queue"` waits for the next turn. Subagent targets keep the Host's
 ownership-checked prompt path.
 
+`session_id` accepts either `session-<uuid>` or a bare UUID. The tool tries the
+canonical form first and falls back to the other shape only for a not-found
+result; ownership and busy failures are never retried against another session.
+`list_sessions` includes `origin` and `parentSessionId` when available, so a
+bare-UUID subagent is distinguishable from a top-level target.
+
 `workspace` accepts a workspace id, an absolute path, or part of a title. An
 absolute path that is not registered yet is created as a new workspace.
 

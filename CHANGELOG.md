@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.33] - 2026-10-27
+
+### Fixed
+
+- `send` accepts both the canonical `session-<uuid>` id and a bare UUID. The Host list contains both shapes (top-level sessions are normally prefixed; subagent sessions keep a bare UUID), so a caller that copied a bare top-level id failed with `session/not-found` on the first send. The tool now tries the canonical form first and falls back to the other shape **only** for a not-found result; ownership and busy failures are never retried against a different session.
+- `list_sessions` now returns `origin` and `parentSessionId` when the Host provides them, so a bare-UUID subagent row is distinguishable from a top-level target instead of looking like a random id.
+- Tests cover repairing a bare UUID to `session-<uuid>`, falling back to a bare UUID when the prefixed id is absent, and the new list fields.
+
 ## [2.0.32] - 2026-10-27
 
 ### Fixed

@@ -274,6 +274,54 @@ test("session_message send steers an attributed agent message with the sender se
   assert.equal(steered.length, 1);
 });
 
+test("session_message repairs a bare UUID to the canonical session- id", async () => {
+  const ctx = fakeContext();
+  const steered = [];
+  const bare = "984b4cef-c3b6-4faa-a59f-5688d6f6c7ee";
+  const canonical = "session-" + bare;
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async (sessionId) => {
+            if (sessionId !== canonical) throw Object.assign(new Error("session not found"), { code: "session/not-found" });
+            return { agent: { session: { header: { origin: "user" } }, steer: (message) => steered.push({ sessionId, message }) } };
+          },
+          prompt: async () => { throw new Error("must not prompt"); },
+          list: async () => ({ items: [] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: bare, message: "sync" }, { agent: { id: "sender-1" } });
+  assert.equal(steered.length, 1);
+  assert.equal(steered[0].sessionId, canonical);
+  assert.equal(steered[0].message.source.senderSessionId, "sender-1");
+});
+
+test("session_message falls back to a bare UUID when the prefixed id is absent", async () => {
+  const ctx = fakeContext();
+  const steered = [];
+  const bare = "984b4cef-c3b6-4faa-a59f-5688d6f6c7ee";
+  ctx.get = (name) =>
+    name === "sessionController"
+      ? {
+          resolveAgent: async (sessionId) => {
+            if (sessionId !== bare) throw Object.assign(new Error("session not found"), { code: "session/not-found" });
+            return { agent: { session: { header: { origin: "user" } }, steer: (message) => steered.push({ sessionId, message }) } };
+          },
+          prompt: async () => { throw new Error("must not prompt"); },
+          list: async () => ({ items: [] }),
+        }
+      : undefined;
+  apply(ctx, {});
+  const tool = ctx.registered.get("session_message");
+
+  await tool.execute({ action: "send", session_id: "session-" + bare, message: "sync" }, { agent: { id: "sender-1" } });
+  assert.equal(steered.length, 1);
+  assert.equal(steered[0].sessionId, bare);
+});
+
 test("session_message keeps the ownership-checked prompt path for subagents", async () => {
   const ctx = fakeContext();
   const prompted = [];
@@ -355,13 +403,16 @@ test("session_message resolves a workspace by id, path or title", async () => {
     name === "workspaceRegistry"
       ? { list: () => workspaces, create: async (path) => ({ id: "w3", path }) }
       : name === "sessionController"
-        ? { list: async () => ({ items: [{ sessionId: "s1", title: "one" }, { sessionId: "s2" }] }) }
+        ? { list: async () => ({ items: [{ sessionId: "s1", title: "one" }, { sessionId: "s2", origin: "subagent", parentSessionId: "s1" }] }) }
         : undefined;
   apply(ctx, {});
   const tool = ctx.registered.get("session_message");
 
   const byId = JSON.parse(await tool.execute({ action: "list_sessions", workspace: "w1" }, {}));
   assert.deepEqual(byId.map((row) => row.sessionId), ["s1"]);
+  const all = JSON.parse(await tool.execute({ action: "list_sessions" }, {}));
+  assert.equal(all[1].origin, "subagent");
+  assert.equal(all[1].parentSessionId, "s1");
 
   const byPath = await tool.execute({ action: "list_sessions", workspace: "/tmp/beta" }, {});
   assert.equal(byPath, "No matching sessions.");
