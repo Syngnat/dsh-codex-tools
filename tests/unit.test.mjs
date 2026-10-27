@@ -8,9 +8,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import { fileURLToPath } from "node:url";
 
 import { defineTool, parameterSchema } from "../lib/define-tool.mjs";
-import { computerHelperLaunch, windowsCompileCommand } from "../lib/ax-client.mjs";
+import { AxClient, computerHelperLaunch, helperLocked, legacyWindowsHelperPath, windowsCompileCommand, windowsHelperPath } from "../lib/ax-client.mjs";
 import { UPDATE_PAGE_PATH, updatePageAction } from "../lib/update-host.mjs";
 import { SETTINGS_PATH } from "../lib/settings-host.mjs";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -645,18 +648,72 @@ test("browser open_tab does not require a Codex browser id", async () => {
 
 test("computer helper launches its own Windows program, not PowerShell", () => {
   const launch = computerHelperLaunch("win32");
-  assert.match(launch.command, /dsh-uia\.exe$/);
+  assert.match(launch.command, /dsh-uia-[a-z0-9]+\.exe$/);
   assert.deepEqual(launch.args, []);
   assert.equal(launch.label, "dsh-uia");
   assert.equal(JSON.stringify(launch).toLowerCase().includes("powershell"), false);
 });
 
+test("the Windows helper is built outside the installed package", () => {
+  // A helper inside the package holds a Windows image lock on its own file, and
+  // the next update then cannot delete the old package directory: the plugin
+  // disappears and its reinstall fails with EPERM. The path must stay outside.
+  const helperDir = join(tmpdir(), "codex-tools-helper-test");
+  const pluginRoot = join(tmpdir(), "codex-tools-plugin-test");
+  const first = windowsHelperPath({ pluginRoot, helperDir, read: () => "class Helper {}" });
+  const same = windowsHelperPath({ pluginRoot, helperDir, read: () => "class Helper {}" });
+  const rebuilt = windowsHelperPath({ pluginRoot, helperDir, read: () => "class Helper { int v2; }" });
+  assert.equal(first, same);
+  assert.notEqual(first, rebuilt, "a rebuilt helper gets its own file so a running copy is never overwritten");
+  assert.equal(first.startsWith(helperDir), true);
+  assert.equal(first.includes(pluginRoot), false);
+  assert.match(first, /dsh-uia-[a-f0-9]{12}\.exe$/);
+  assert.equal(legacyWindowsHelperPath({ pluginRoot }), join(pluginRoot, "bin", "dsh-uia.exe"));
+});
+
+test("a helper still held by a running process is detected before replacing the bundle", () => {
+  const busy = () => {
+    throw Object.assign(new Error("EBUSY: resource busy or locked"), { code: "EBUSY" });
+  };
+  assert.equal(helperLocked("x", { platform: "win32", exists: () => true, open: busy }), true);
+  assert.equal(helperLocked("x", { platform: "win32", exists: () => true, open: () => 7, close: () => {} }), false);
+  // Other systems unlink a running binary, so the probe never blocks them.
+  assert.equal(helperLocked("x", { platform: "darwin", exists: () => true, open: busy }), false);
+  assert.equal(helperLocked("x", { platform: "win32", exists: () => false, open: busy }), false);
+});
+
+test("dispose waits for the helper to exit so the update can delete its files", async () => {
+  const child = new EventEmitter();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.stdin = new PassThrough();
+  child.exitCode = null;
+  child.kill = () => {
+    setTimeout(() => {
+      child.exitCode = 0;
+      child.emit("exit");
+    }, 15);
+    return true;
+  };
+  const ax = new AxClient({
+    launch: { command: process.execPath, args: [], label: "test-helper", requiredPath: fileURLToPath(import.meta.url) },
+    spawn: () => child,
+  });
+  await ax.start();
+  const started = Date.now();
+  await ax.dispose();
+  assert.ok(Date.now() - started >= 10, "dispose must resolve only after the helper is gone");
+});
+
 test("windows helper is compiled with the built-in C# compiler", () => {
   const exists = (path) => path.replaceAll("\\", "/").includes("Framework64") && (path.endsWith("csc.exe") || path.endsWith(".dll"));
-  const plan = windowsCompileCommand({ systemRoot: "C:\\Windows", pluginRoot: "D:\\plugin", exists });
+  const helperDir = join(tmpdir(), "codex-tools-helper-build");
+  const plan = windowsCompileCommand({ systemRoot: "C:\\Windows", pluginRoot: "D:\\plugin", helperDir, exists });
   assert.match(plan.command, /csc\.exe$/);
-  assert.match(plan.output, /dsh-uia\.exe$/);
+  assert.equal(plan.output.startsWith(helperDir), true);
+  assert.match(plan.output, /dsh-uia-.+\.exe$/);
   assert.match(plan.source, /dsh-uia\.cs$/);
+  assert.equal(plan.args.some((arg) => arg.startsWith("/out:") && arg.includes("dsh-uia-")), true);
   assert.equal(plan.args.includes(plan.source), true);
   assert.equal(plan.args.some((arg) => arg.includes("WindowsBase.dll")), true);
   assert.equal(JSON.stringify(plan).toLowerCase().includes("powershell"), false);

@@ -4,6 +4,19 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.43] - 2026-10-27
+
+### Fixed
+
+- **Editing on Windows could remove the plugin and never bring it back.** The Windows helper was compiled to `bin/dsh-uia.exe` inside the installed package. A running helper keeps a Windows image lock on its own file, so the online update removed the bundle and then failed to delete the directory (`ERR_PNPM_EPERM` on the `_tmp_*` rename), and every later reinstall failed the same way because the leftover `bin\dsh-uia.exe` was still locked.
+- The helper is now built outside the package, at `~/.dsh/dsh-codex-tools/helper/dsh-uia-<source-hash>.exe`. The name carries a hash of `native/dsh-uia.cs`, so a rebuilt helper never overwrites the file a running helper still holds.
+- `UpdateService.install()` now runs a `prepare` step before any mutation: it stops the plugin's own helper, waits for the process to exit (2 s, then `SIGKILL`), and probes a legacy `bin/dsh-uia.exe` for a held image lock. If the file is still held, the update fails with `helper-in-use` **before** `removeBundle`, so the working installation survives; the restore path runs the same step before reinstalling.
+- `AxClient.dispose()` now waits for the helper instead of firing `SIGTERM` and returning; the wait keeps its deadline timer referenced, so an update cannot resolve while the helper is still holding its file.
+
+### Upgrading from 2.0.42 or earlier
+
+The old code performs the replacement itself, so the first hop cannot use the new guard. If an update from ≤ 2.0.42 fails and the plugin disappears, end the leftover helper once (`taskkill /IM dsh-uia.exe /F`), delete `node_modules/@local/dsh-codex-tools` if it survived, then install again — with 2.0.43 in place the helper lives outside the package and this cannot recur.
+
 ## [2.0.42] - 2026-10-27
 
 ### Fixed

@@ -4,5 +4,7 @@ node_modules/
 .release-check/
 .DS_Store
 
-# Built on first use by lib/ax-client.mjs with the Windows C# compiler.
+# Legacy in-package helper build (2.0.42 and earlier). From 2.0.43 the helper is
+# built under ~/.dsh/dsh-codex-tools/helper/, so an update never has to delete a
+# file a running helper still holds.
 bin/dsh-uia.exe

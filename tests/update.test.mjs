@@ -554,6 +554,76 @@ test("install does not overwrite an installation another caller made", async () 
   assert.equal((await manager.listBundles())[0].version, "9.9.9");
 });
 
+// ------------------------------------------------------- helper release
+
+test("install releases this plugin's own helper before the bundle is removed", async () => {
+  const manager = managerStub();
+  const original = manager.removeBundle.bind(manager);
+  const order = [];
+  manager.removeBundle = async (name) => {
+    order.push("remove");
+    return original(name);
+  };
+  const service = new UpdateService({
+    currentVersion: "1.0.0",
+    manager,
+    fetch: fetchStub(),
+    prepare: async () => {
+      order.push("prepare");
+    },
+  });
+  await service.check();
+  await service.install({ confirm: true });
+  assert.deepEqual(order, ["prepare", "remove"]);
+});
+
+test("a helper that cannot be released stops the update before anything is removed", async () => {
+  const manager = managerStub();
+  const service = new UpdateService({
+    currentVersion: "1.0.0",
+    manager,
+    fetch: fetchStub(),
+    prepare: async () => {
+      throw Object.assign(new Error("helper-in-use"), { code: "helper-in-use" });
+    },
+  });
+  await service.check();
+  await assert.rejects(
+    () => service.install({ confirm: true }),
+    (error) => error.code === "helper-in-use",
+  );
+  // The working installation is untouched, so the plugin never disappears.
+  assert.deepEqual(manager.calls, []);
+  assert.equal((await manager.listBundles())[0].version, "1.0.0");
+});
+
+test("the restore path releases the helper again before reinstalling", async () => {
+  const manager = managerStub();
+  let installs = 0;
+  let prepares = 0;
+  const original = manager.installBundle.bind(manager);
+  manager.installBundle = async (spec, options) => {
+    installs += 1;
+    if (installs === 1) {
+      manager.calls.push(["installBundle", spec, options]);
+      return { application: "failed", error: { code: "install-failed" } };
+    }
+    return original(spec, options);
+  };
+  const service = new UpdateService({
+    currentVersion: "1.0.0",
+    manager,
+    fetch: fetchStub(),
+    prepare: async () => {
+      prepares += 1;
+    },
+  });
+  await service.check();
+  const result = await service.install({ confirm: true });
+  assert.equal(result.outcome, "restored");
+  assert.equal(prepares, 2);
+});
+
 // ------------------------------------------------------------------- tool
 
 /** A job service that runs the job body in place and keeps its log. */

@@ -8,14 +8,14 @@
 
 | 工具 | 做什么 | 实现方式 |
 | --- | --- | --- |
-| `computer_use` | 通过无障碍树和截图读写原生 App | macOS 用 `bin/dsh-ax`（辅助功能）；Windows 用 `bin/dsh-uia.exe`（UI Automation，首次使用时现编译） |
+| `computer_use` | 通过无障碍树和截图读写原生 App | macOS 用 `bin/dsh-ax`（辅助功能）；Windows 用 `~/.dsh/dsh-codex-tools/helper/dsh-uia-<源码哈希>.exe`（UI Automation，首次使用时现编译） |
 | `browser` | 列出插件自己的 Chrome 窗口与标签页、绑定一个、读取、点击、输入、导航 | 用 Chrome DevTools 协议驱动插件自己拉起的 Chrome（独立 profile） |
 | `session_message` | 在别的项目新建会话并注入完整任务简报，或对已有会话追问、分叉、改名 | Host 的 `sessionController` 与 `workspaceRegistry` |
 | `codex_tools_update` | 检查并安装本插件的更新稳定版 | Host 的 `pluginManager` 与 `jobs` |
 
 ## 环境要求
 
-- **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限，截图另需屏幕录制权限。Windows 上插件第一次调用时才用 `native/dsh-uia.cs` 编出 `bin/dsh-uia.exe`，用的是 Windows 自带的 .NET Framework 4.x 里的 `csc.exe`——不需要装 .NET SDK、不需要指定 PowerShell 版本、不需要管理员权限。
+- **macOS 或 Windows。** macOS 上 `computer_use` 需要给 `bin/dsh-ax` 辅助功能权限，截图另需屏幕录制权限。Windows 上插件第一次调用时才用 `native/dsh-uia.cs` 编出 `~/.dsh/dsh-codex-tools/helper/dsh-uia-<源码哈希>.exe`，用的是 Windows 自带的 .NET Framework 4.x 里的 `csc.exe`——不需要装 .NET SDK、不需要指定 PowerShell 版本、不需要管理员权限。编译产物刻意放在**插件包外面**：Windows 会锁住正在运行的 exe 映像，放在包内会让插件自更新删不掉旧目录（EPERM）。
 - **DSH `>= 0.2.1-rc.1`**，不设未来版本上限。插件在挂载前检查所需的 Host 能力，缺哪个就报哪个名字，不靠版本号猜。
 - **不需要浏览器扩展。** 浏览器工具拉起自己的 Chrome，**不会**挂到你正在用的 Chrome 上，所以不会往你的浏览会话里注入任何东西。
 
@@ -157,7 +157,7 @@ session_message {
 - **不跑安装脚本。** 声明了 `preinstall`、`install`、`postinstall` 或 `prepare` 的清单直接拒绝。
 - **在插件之外执行。** 替换放在一个不属于插件的 Host 任务里跑，所以插件中途被卸载也杀不掉这次替换。
 - **事后核对。** 成功要求记录的 bundle 行与钉死的 commit 一致，并且本插件自己的路由回报的就是新版本——不只是管理器回执。
-- **可恢复。** 如果 profile 已被改动之后替换失败，会重新安装并启用原来运行的版本。恢复也失败时会明说，并打印手动命令，而不是谎报成功。
+- **先释放自己再替换。** 替换前会结束本插件的电脑操控辅助进程并等它真正退出，再检查旧版本遗留在包内的 `bin/dsh-uia.exe` 是否仍被占用。被占用时更新会在删除之前停下并报 `helper-in-use`，工作安装保持完好，而不是先删掉插件再装不回来。
 - **不覆盖外来安装。** 期间被其他管理器调用者装上的版本会被识别出来并放过。
 
 ### 它不会做什么

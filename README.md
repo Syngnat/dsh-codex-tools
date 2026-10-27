@@ -13,7 +13,7 @@ shells out to PowerShell.
 
 | Tool | What it does | How it works |
 | --- | --- | --- |
-| `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | `bin/dsh-ax` (macOS Accessibility) or `bin/dsh-uia.exe` (Windows UI Automation, built on first use) |
+| `computer_use` | Reads and drives native apps through their accessibility tree and screenshots | `bin/dsh-ax` (macOS Accessibility) or `~/.dsh/dsh-codex-tools/helper/dsh-uia-<source-hash>.exe` (Windows UI Automation, built on first use) |
 | `browser` | Lists the plugin's Chrome window and its tabs, binds one, reads it, clicks, types, navigates | Chrome DevTools Protocol against a Chrome the plugin launches with its own profile |
 | `session_message` | Starts a session in another project with a full task brief, or steers, forks and renames existing ones | Host `sessionController` and `workspaceRegistry` |
 | `codex_tools_update` | Checks for and installs a newer stable release of this plugin | Host `pluginManager` and `jobs` |
@@ -22,7 +22,8 @@ shells out to PowerShell.
 
 - **macOS or Windows.** On macOS `computer_use` needs Accessibility permission for
   `bin/dsh-ax` (and Screen Recording for screenshots). On Windows the plugin builds
-  `bin/dsh-uia.exe` from `native/dsh-uia.cs` the first time it runs, with the C#
+  `~/.dsh/dsh-codex-tools/helper/dsh-uia-<source-hash>.exe` from `native/dsh-uia.cs`
+  the first time it runs, with the C#
   compiler that ships inside Windows itself (`.NET Framework` 4.x). You do not
   install a .NET SDK, choose a PowerShell version, or run anything as administrator.
 - **DSH `>= 0.2.1-rc.1`**, with no future-version ceiling. The plugin checks the
@@ -219,6 +220,11 @@ Ask the user before passing `confirm: true`: the plugin is replaced in place.
   `postinstall` or `prepare` is refused outright.
 - **Runs outside the plugin.** The replacement happens inside a Host job that does
   not belong to the plugin, so removing the plugin mid-flight cannot kill the swap.
+- **Releases itself first.** Before anything is removed, the plugin stops its own
+  computer-use helper and waits for it to exit, then checks whether a legacy
+  `bin/dsh-uia.exe` inside the old package is still held. A held file stops the
+  update with `helper-in-use` while the working installation is untouched, instead
+  of removing the plugin and then failing to install it back.
 - **Verification after the fact.** Success requires the recorded bundle row to match
   the pinned commit and the plugin's own route to answer with the new version — not
   just a manager receipt.

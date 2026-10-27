@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { defineTool } from "./lib/define-tool.mjs";
-import { AxClient } from "./lib/ax-client.mjs";
+import { AxClient, helperLocked, legacyWindowsHelperPath } from "./lib/ax-client.mjs";
 import { CdpBrowser } from "./lib/cdp-browser.mjs";
 import { createComputerTool } from "./lib/computer-tool.mjs";
 import { createBrowserTool } from "./lib/browser-tool.mjs";
@@ -68,7 +68,20 @@ export function apply(ctx, config = {}) {
     if (updateService === null) {
       const version = readOwnVersion();
       if (version === null) throw new Error("codex-tools: cannot read the plugin's own version from package.json");
-      updateService = new UpdateService({ currentVersion: version, manager });
+      updateService = new UpdateService({
+        currentVersion: version,
+        manager,
+        // Stop our own helper before the package is replaced. Windows keeps an
+        // image lock on a running dsh-uia.exe; while it is held, removing the
+        // old bundle and installing the new one both fail with EPERM, which is
+        // how a plugin update could remove the plugin and then never come back.
+        prepare: async () => {
+          await ax.dispose();
+          if (helperLocked(legacyWindowsHelperPath())) {
+            throw Object.assign(new Error("helper-in-use"), { code: "helper-in-use" });
+          }
+        },
+      });
     }
     return updateService;
   };
