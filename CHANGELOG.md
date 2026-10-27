@@ -4,6 +4,14 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.36] - 2026-10-27
+
+### Fixed
+
+- An explicit `check` (UI button and `codex_tools_update` tool) now bypasses the 30-second cooldown and asks the GitHub REST API first. The release redirect can lag behind a just-published tag, which made the page show `latest 2.0.32` while running `2.0.33`; the explicit check now resolves the real latest release immediately.
+- When the redirect result is **not newer** than the running version, the service consults the REST API once and prefers a genuinely newer answer. If the API is unavailable or rate-limited, the redirect result is kept. A legitimately-ahead local build still reports `ahead` rather than a fabricated update.
+- Tests cover the stale-redirect API fallback and the forced, cooldown-bypassing check.
+
 ## [2.0.35] - 2026-10-27
 
 ### Added

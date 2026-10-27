@@ -341,6 +341,59 @@ test("check is coalesced and cooled down", async () => {
   assert.equal(calls, 1);
 });
 
+test("check consults the API when a stale redirect is not newer than the running version", async () => {
+  const calls = [];
+  const redirect = () => ({
+    status: 302,
+    ok: false,
+    url: RELEASE_REDIRECT,
+    redirected: false,
+    headers: { get: (name) => (name.toLowerCase() === "location" ? "https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.0" : null) },
+    body: { getReader: () => ({ async read() { return { done: true, value: undefined }; }, async cancel() {}, releaseLock() {} }) },
+  });
+  const service = new UpdateService({
+    currentVersion: "1.0.1",
+    manager: managerStub(),
+    fetch: async (url) => {
+      calls.push(String(url));
+      if (String(url) === RELEASE_REDIRECT) return redirect();
+      if (String(url) === RELEASE_API) return jsonResponse(releasePayload("1.0.2"), { headers: { "content-type": "application/json" } });
+      throw new Error(`unexpected fetch: ${String(url)}`);
+    },
+  });
+  const status = await service.check();
+  assert.equal(status.latestVersion, "1.0.2");
+  assert.equal(status.status, "update-available");
+  assert.deepEqual(calls, [RELEASE_REDIRECT, RELEASE_API]);
+});
+
+test("an explicit check bypasses the cooldown and asks the API first", async () => {
+  const calls = [];
+  const redirect = () => ({
+    status: 302,
+    ok: false,
+    url: RELEASE_REDIRECT,
+    redirected: false,
+    headers: { get: (name) => (name.toLowerCase() === "location" ? "https://github.com/Syngnat/dsh-codex-tools/releases/tag/v1.0.1" : null) },
+    body: { getReader: () => ({ async read() { return { done: true, value: undefined }; }, async cancel() {}, releaseLock() {} }) },
+  });
+  const service = new UpdateService({
+    currentVersion: "1.0.0",
+    manager: managerStub(),
+    cooldownMs: 60_000,
+    fetch: async (url) => {
+      calls.push(String(url));
+      if (String(url) === RELEASE_REDIRECT) return redirect();
+      if (String(url) === RELEASE_API) return jsonResponse(releasePayload("1.0.2"), { headers: { "content-type": "application/json" } });
+      throw new Error(`unexpected fetch: ${String(url)}`);
+    },
+  });
+  assert.equal((await service.check()).latestVersion, "1.0.1");
+  assert.equal((await service.check()).latestVersion, "1.0.1");
+  assert.equal((await service.check({ force: true })).latestVersion, "1.0.2");
+  assert.deepEqual(calls, [RELEASE_REDIRECT, RELEASE_API]);
+});
+
 // ------------------------------------------------------------ eligibility
 
 test("eligibility names the reason an install is refused", async () => {

@@ -142,7 +142,7 @@ session_message {
 | 动作 | 做什么 |
 | --- | --- |
 | `status` | 报告当前运行版本、上次检查时间，以及这个安装能否在线替换。 |
-| `check` | 从 GitHub 读最新稳定版。只读：不下载、不安装任何东西。 |
+| `check` | 从 GitHub 读最新稳定版。只读：不下载、不安装任何东西。显式检查会绕过 30 秒冷却并优先查 REST API；网页重定向还没更新到新 tag 时会再用 API 复核。 |
 | `install` | 用最新版替换 bundle。必须传 `confirm: true`。 |
 | `operation` | 读取已经在跑的更新任务的状态。 |
 

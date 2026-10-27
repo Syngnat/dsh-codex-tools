@@ -199,7 +199,7 @@ changes anything:
 | Action | What it does |
 | --- | --- |
 | `status` | Reports the running version, the last check time, and whether this installation can be replaced online. |
-| `check` | Reads the latest stable release from GitHub. Read-only: it downloads and installs nothing. |
+| `check` | Reads the latest stable release from GitHub. Read-only: it downloads and installs nothing. An explicit check bypasses the 30-second cooldown and asks the REST API first; a redirect that is not newer is re-checked against the API. |
 | `install` | Replaces the bundle with the latest release. Requires `confirm: true`. |
 | `operation` | Reads the state of an update job that is already running. |
 
