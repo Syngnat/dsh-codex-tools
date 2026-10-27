@@ -4,6 +4,15 @@ All notable changes to this plugin are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.41] - 2026-10-27
+
+### Fixed
+
+- The sent record is now appended **during** the sending turn. The previous turn-end listener produced no record because a user message appended after `turn/end` is rejected by the session surface validator.
+- The send result now reports `Sent record: appended | skipped: no sender session | rejected: …`, so a missing bubble can be diagnosed from the tool result instead of guessing.
+- Sender session resolution falls back to `exec.agent.session`, `exec.session`, then the `sessions` service.
+- Tests assert the record exists immediately after `send`.
+
 ## [2.0.40] - 2026-10-27
 
 ### Fixed

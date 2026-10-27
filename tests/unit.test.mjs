@@ -301,8 +301,6 @@ test("session_message leaves a sent record in the sender transcript after the tu
   const tool = ctx.registered.get("session_message");
 
   await tool.execute({ action: "send", session_id: "target", message: "hello" }, { agent: sender });
-  assert.equal(appended.length, 0);
-  listener({ id: "sender-1" }, { type: "turn/end" });
   assert.equal(appended.length, 1);
   assert.equal(appended[0].type, "user/message");
   assert.equal(appended[0].data.role, "user");
